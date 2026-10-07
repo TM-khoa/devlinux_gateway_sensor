@@ -12,6 +12,9 @@ static pthread_t threadConnmgr;
 static pthread_t threadDatamgr;
 static pthread_t threadStoragemgr;
 
+pthread_mutex_t sigmutex;
+
+
 volatile sig_atomic_t sflag = 0;
 
 void ldebug(const char* str)
@@ -26,8 +29,17 @@ void ldebug(const char* str)
 void* thread_connmgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
-    while(sflag == 0) {
-
+    while(1) {
+        ldebug("connmgr mutex lock\n");
+        pthread_mutex_lock(&sigmutex);
+        if(sflag == 1) {
+            ldebug("connmgr get signal\n");
+            pthread_mutex_unlock(&sigmutex);
+            break;
+        }
+        ldebug("connmgr mutex unlock\n");
+        pthread_mutex_unlock(&sigmutex);
+        sleep(1);
     }
     ldebug("connmgr terminated\n");
     return NULL;
@@ -36,8 +48,17 @@ void* thread_connmgr(void* arg) {
 void* thread_datamgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
-    while(sflag == 0) {
-
+    while(1) {
+        ldebug("datamgr mutex lock\n");
+        pthread_mutex_lock(&sigmutex);
+        if(sflag == 1) {
+            ldebug("datamgr get signal\n");
+            pthread_mutex_unlock(&sigmutex);
+            break;
+        }
+        ldebug("datamgr mutex unlock\n");
+        pthread_mutex_unlock(&sigmutex);
+        sleep(1);
     }
     ldebug("datamgr terminated\n");
     return NULL;
@@ -46,8 +67,17 @@ void* thread_datamgr(void* arg) {
 void* thread_storagemgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
-    while(sflag == 0) {
-
+    while(1) {
+        ldebug("storemgr mutex lock\n");
+        pthread_mutex_lock(&sigmutex);
+        if(sflag == 1) {
+            ldebug("storemgr get signal\n");
+            pthread_mutex_unlock(&sigmutex);
+            break;
+        }
+        ldebug("storemgr mutex unlock\n");
+        pthread_mutex_unlock(&sigmutex);
+        sleep(1);
     }
     ldebug("storemgr terminated\n");
     return NULL;
@@ -56,17 +86,17 @@ void* thread_storagemgr(void* arg) {
 void handle_sigint(int sig) {
     // Note: Use only async-signal-safe functions inside handlers (like write)
     sflag = 1;
-    char msg[50] = "\nSignal handler:";
-    const char *msg2 = "Exiting cleanly\n";
-    const char *sig_name = "UNKNOWN";
+    const char msgint[] = "\nSignal handler:SIGINT Exiting cleanly\n";
+    const char msgterm[] = "\nSignal handler:SIGTERM Exiting cleanly\n";
     switch(sig) {
-        case SIGINT:  sig_name = "SIGINT ";  break;
-        case SIGTERM: sig_name = "SIGTERM "; break;
+        case SIGINT:
+            write(STDOUT_FILENO, msgint, sizeof(msgint) - 1);
+            break;
+        case SIGTERM: 
+            write(STDOUT_FILENO, msgterm, sizeof(msgterm) - 1);
+            break;
         // Add other signals as needed
     }
-    strncat(msg, sig_name, strlen(sig_name));
-    strncat(msg, msg2, strlen(msg2));
-    write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 }
 
 int create_signal_handler()
@@ -97,6 +127,7 @@ int create_signal_handler()
 int main() {
     pthread_t *thread_list[THREAD_NUM]= {&threadConnmgr, &threadDatamgr, &threadStoragemgr};
     pthreadfunc pthreadfunc_list[THREAD_NUM] = {thread_connmgr, thread_datamgr, thread_storagemgr};
+    pthread_mutex_init(&sigmutex, NULL);
     if(create_signal_handler() != 0) {
         perror("Failed to create signal handler");
         return 1;
@@ -110,7 +141,17 @@ int main() {
 
     }
 
-    while(sflag == 0) {
+    while(1) {
+        ldebug("main mutex lock\n");
+        pthread_mutex_lock(&sigmutex);
+        if(sflag == 1) {
+            ldebug("main receive signal\n");
+            pthread_mutex_unlock(&sigmutex);
+            break;
+        }
+        ldebug("main mutex unlock\n");
+        pthread_mutex_unlock(&sigmutex);
+        sleep(1);
     }
     ldebug("main - join thread \n");
 
