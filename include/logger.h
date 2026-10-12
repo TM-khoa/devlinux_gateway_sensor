@@ -1,0 +1,8 @@
+#ifndef _LOGGER_H_
+#define _LOGGER_H_
+
+
+#define LOG_FILENAME "gateway.log"
+void gw_log_write(const char *msg);
+
+#endif // _LOGGER_H_
