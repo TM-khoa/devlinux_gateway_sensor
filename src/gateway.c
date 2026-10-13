@@ -12,7 +12,7 @@
 #include "logger.h"
 #include <stdint.h>
 
-#include "server.h"
+#include "gateway.h"
 
 #define THREAD_NUM 3
 #define FIFO_PATH "./bin/logFifo"

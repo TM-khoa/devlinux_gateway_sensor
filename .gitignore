@@ -3,3 +3,4 @@ lib
 obj
 compile_commands.json
 .DS_Store
+*.log

@@ -18,12 +18,12 @@ AR_OBJ= $(patsubst %, $(OBJ_PATH)/%.o, $(AR_RAW_NAME))
 AR_LIB_NAME=$(patsubst %, $(LIB_PATH)/lib%.a, $(AR_RAW_NAME))
 AR_LINKER_PATH+=-L$(LIB_PATH)
 
-all: server client
+all: gateway client
 
-rs:
-	$(BIN_PATH)/server 1234
+gw:
+	$(BIN_PATH)/gateway 1234
 
-rc:
+cl:
 	$(BIN_PATH)/client temperature 10 127.0.0.1 1234 1000
 	$(BIN_PATH)/client humidity 21 127.0.0.1 1235 1000
 	$(BIN_PATH)/client motion 30 127.0.0.1 1236 1000
@@ -41,7 +41,7 @@ lib:
 
 
 obj/%.o: $(SRC_PATH)/%.c | obj
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
 
 $(AR_LIB_NAME): $(AR_OBJ) | lib
 	$(AR) $(ARFLAGS) $@ $^
@@ -49,7 +49,7 @@ $(AR_LIB_NAME): $(AR_OBJ) | lib
 client: $(OBJ_PATH)/client.o  $(AR_LIB_NAME) | bin obj
 	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
 
-server: $(OBJ_PATH)/server.o  $(AR_LIB_NAME) | bin obj
+gateway: $(OBJ_PATH)/gateway.o  $(AR_LIB_NAME) | bin obj
 	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
 
 .PHONY: clean run all

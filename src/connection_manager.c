@@ -9,7 +9,7 @@
 #include "protocol_adapter.h"
 #include "connection_manager.h"
 #include "endecode_helper.h"
-#include "server.h"
+#include "gateway.h"
 
 
 size_t sgp_reply(parse_result_t result, uint8_t *reply, size_t cap);
@@ -38,7 +38,9 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
     for(uint8_t a = 0; a < no_adapter; a++) {
         if(port_offset == p_adapter[a]->port_offset) {
             conn->adapter = p_adapter[a];
-            printf("DEBUG:Found adapter of:%s\n", conn->adapter->name);
+            char s[30] = {0};
+            snprintf(s, sizeof(s), "DEBUG:Found adapter of:%s\n", conn->adapter->name);
+            ldebug(s);
             return 0;
         }
     }
@@ -76,7 +78,6 @@ int handle_connection()
 
                 len = sizeof(local_addr);
                 getsockname(conn_fd, (struct sockaddr *)&local_addr, &len);
-                printf("local port = %u\n", ntohs(local_addr.sin_port));
                 int local_port = ntohs(local_addr.sin_port);
 
                 // struct sockaddr_in peer_addr;
