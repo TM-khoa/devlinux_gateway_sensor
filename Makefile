@@ -1,20 +1,34 @@
 CC = gcc
 CFLAGS=-Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread
-CFLAGS+=-DDEBUG
+# CFLAGS+=-DDEBUG
 AR = ar
 ARFLAGS = rcs
 SRC_PATH=./src
 BIN_PATH=./bin
 OBJ_PATH=./obj
-LOGGER_OBJ = $(OBJ_PATH)/logger.o
-LOGGER_LIB = $(BIN_PATH)/liblogger.a
+LIB_PATH=./lib
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
 
-all: server
+AR_RAW_NAME+=connection_manager
+AR_RAW_NAME+=endecode_helper
+AR_RAW_NAME+=logger
+AR_LINKER= $(patsubst %, -l%, $(AR_RAW_NAME))
+AR_OBJ= $(patsubst %, $(OBJ_PATH)/%.o, $(AR_RAW_NAME))
+AR_LIB_NAME=$(patsubst %, $(LIB_PATH)/lib%.a, $(AR_RAW_NAME))
+AR_LINKER_PATH+=-L$(LIB_PATH)
 
-run:
-	./$(BIN_PATH)/server
+all: server client
+
+rs:
+	$(BIN_PATH)/server 1234
+
+rc:
+	$(BIN_PATH)/client temperature 10 127.0.0.1 1234 1000
+	$(BIN_PATH)/client humidity 21 127.0.0.1 1235 1000
+	$(BIN_PATH)/client motion 30 127.0.0.1 1236 1000
+	$(BIN_PATH)/client door 40 127.0.0.1 1236 1000
+	$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 1000
 
 bin:
 	mkdir -p $(BIN_PATH)
@@ -22,18 +36,25 @@ bin:
 obj:
 	mkdir -p $(OBJ_PATH)
 
+lib:
+	mkdir -p $(LIB_PATH)
 
-$(LOGGER_LIB): $(LOGGER_OBJ) | bin
-	$(AR) $(ARFLAGS) $@ $^
 
-obj/%.o: src/%.c | obj
+obj/%.o: $(SRC_PATH)/%.c | obj
 	$(CC) $(CFLAGS) -c $< -o $@
 
-server: $(OBJ) $(LOGGER_LIB) | bin
-	$(CC) $(CFLAGS) $(OBJ) -Lbin -llogger -o $(BIN_PATH)/server
+$(AR_LIB_NAME): $(AR_OBJ) | lib
+	$(AR) $(ARFLAGS) $@ $^
+
+client: $(OBJ_PATH)/client.o  $(AR_LIB_NAME) | bin obj
+	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
+
+server: $(OBJ_PATH)/server.o  $(AR_LIB_NAME) | bin obj
+	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
 
 .PHONY: clean run all
 clean:
 	rm -rf $(BIN_PATH)
 	rm -rf $(OBJ_PATH)
+	rm -rf $(LIB_PATH)
 	rm gateway.log
