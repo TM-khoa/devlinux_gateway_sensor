@@ -1,7 +1,9 @@
-#ifndef _STOAGE_MANAGER_H_
-#define _STOAGE_MANAGER_H_
+#ifndef _STORAGE_MANAGER_H_
+#define _STORAGE_MANAGER_H_
 #include <sqlite3.h>
 #include "common.h"
+#include "share_buffer.h"
+#include <stdio.h>
 
 /* ---- Storage manager + SQLite ---- */
 typedef struct {
@@ -12,4 +14,6 @@ typedef struct {
     const char *db_path;
 } storagemgr_t;
 
-#endif // _STOAGE_MANAGER_H_
+int stormgr_start(storagemgr_t *stormgr, sbuffer_t *sbuf);
+void stormgr_read();
+#endif // _STORAGE_MANAGER_H_

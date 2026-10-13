@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "protocol_adapter.h"
+#include "share_buffer.h"
 #include "common.h"
 
 #define NUM_PORTS 4
@@ -23,6 +24,6 @@ typedef struct {
     size_t n_conns;
 } connmgr_t;
 
-void connmgr_start(connmgr_t *connmgr, uint16_t baseport);
+void connmgr_start(connmgr_t *connmgr, uint16_t baseport, sbuffer_t *sbuf);
 void connmgr_stop();
 #endif // _CONN_MGR_H_

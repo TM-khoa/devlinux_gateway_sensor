@@ -10,25 +10,7 @@
 #include "connection_manager.h"
 #include "data_manager.h"
 #include "storage_manager.h"
-
-
-
-/* ---- sbuffer ---- */
-typedef struct sbuffer_node {
-    sensor_data_t data;
-    bool read_by_data; /* Data manager đã đọc */
-    bool read_by_storage; /* Storage manager đã đọc */
-    struct sbuffer_node *next;
-} sbuffer_node_t;
-
-typedef struct {
-    sbuffer_node_t *head, *tail;
-    size_t size;
-    bool shutdown; /* báo kết thúc */
-    pthread_mutex_t lock;
-    pthread_cond_t not_empty; /* đánh thức thread đọc */
-} sbuffer_t;
-
+#include "share_buffer.h"
 
 /* ---- Shared status (shared memory) ---- */
 typedef struct {
@@ -59,6 +41,6 @@ typedef struct {
 } gateway_t;
 
 int ipc_write_logprocess(const char *msg);
-void ldebug(const char* str);
+void ldebug(const char* str, ...);
 
 #endif //_SEVER_H_
