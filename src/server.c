@@ -25,8 +25,9 @@ static pthread_t threadStoragemgr;
 
 static pthread_mutex_t g_sigmutex;
 static int g_logpipefifo_fd = -1;
-
+static uint16_t g_base_port = 0;
 static gateway_t gw;
+int g_connmgr_stoppipefd[2];
 
 void ldebug(const char* str)
 {
@@ -66,7 +67,13 @@ int ipc_write_logprocess(const char *msg)
 void* thread_connmgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
+    if (pipe(g_connmgr_stoppipefd) == -1) {
+        printf("Error: fail to create pipe g_connmgr_stoppipefd\n");
+    }
+    fcntl(g_connmgr_stoppipefd[0], F_SETFL, O_NONBLOCK);
+    fcntl(g_connmgr_stoppipefd[1], F_SETFL, O_NONBLOCK);
     ipc_write_logprocess("CONN Created");
+    connmgr_start(&gw.conn, g_base_port);
     while(1) {
         ldebug("connmgr mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
@@ -129,6 +136,11 @@ void* thread_storagemgr(void* arg) {
 void handle_sigint(int sig) {
     /* Note: Use only async-signal-safe functions inside handlers (like write) */
     gw.stop = 1;
+    connmgr_stop();
+    /* To unblock select() and stop in connmgr thread  */
+    const char dummy = 1;
+    write(g_connmgr_stoppipefd[1], &dummy, 1);
+
     const char msgint[] = "\nSignal handler:SIGINT Exiting cleanly\n";
     const char msgterm[] = "\nSignal handler:SIGTERM Exiting cleanly\n";
     switch(sig) {
@@ -209,7 +221,10 @@ int server_bringup(int fd) {
 
 }
 
-int main() {
+int main(int argc, char **argv) {
+
+    (void)argc;
+    g_base_port = atoi(argv[1]);
     /* Must create signal hanlder before forking 
      * to make child process inherit signal handler */
     if(create_signal_handler() != 0) {

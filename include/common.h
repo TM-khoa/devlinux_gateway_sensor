@@ -1,6 +1,7 @@
 
 #ifndef _COMMON_H_
 #define _COMMON_H_
+#include "errno.h"
 
 /* ---- Hằng số và kiểu liệt kê dùng chung ---- */
 #define RX_BUF_SIZE 256

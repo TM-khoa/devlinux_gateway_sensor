@@ -20,6 +20,7 @@ static fd_set read_fds;
 static int max_fd = 0;
 static bool stop_handle_conn = 0;
 static uint16_t base_port;
+extern int g_connmgr_stoppipefd[2];
 
 static const protocol_adapter_t atbp = {"TBP", 0, parse_tbp, NULL};
 static const protocol_adapter_t ahlp = {"HLP", 1, parse_hlp, NULL};
@@ -46,11 +47,13 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
 
 }
 
+
 int handle_connection()
 {
     printf("Waiting new connection\n");
     while (stop_handle_conn == false) {
         FD_ZERO(&read_fds);
+        FD_SET(g_connmgr_stoppipefd[0], &read_fds);
         for (int i = 0; i < NUM_PORTS; i++) {
             int listen_fd = p_connmgr->listen_fd[i];
             FD_SET(listen_fd, &read_fds);
@@ -210,6 +213,9 @@ void connmgr_start(connmgr_t *connmgr, uint16_t baseport)
         p_connmgr->conns[i]= conn;
     }
 
+    /* Add signal handler pipe to listen list */
+    FD_SET(g_connmgr_stoppipefd[0], &read_fds);
+    max_fd = g_connmgr_stoppipefd[0];
 
     for (int i = 0; i < NUM_PORTS; i++) {
         printf("Listening on port:%u\n", baseport + i);
