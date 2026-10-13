@@ -1,12 +1,21 @@
 #ifndef _SENSOR_CONFIG_H
 #define _SENSOR_CONFIG_H
 
-/* sensor_config.h - cung cấp sẵn */
-#define RUN_AVG_LENGTH 5 /* số phép đo của giá trị trung binh */
-#define TEMP_MIN_C 15.0
-#define TEMP_MAX_C 20.0
-#define HUMIDITY_MIN 30.0
-#define HUMIDITY_MAX 70.0
+#define RUN_AVG_LENGTH 5
+#define TEMP_MIN_C -40
+#define TEMP_MAX_C 85
+#define HUMIDITY_MIN 0
+#define HUMIDITY_MAX 100
 #define GAS_ALARM_PPM 300.0
+
+#define MOTION_DETECTED 1
+#define DOOR_OPEN 1
+#define DOOR_CLOSE 0
+#define TEMP_COLD_THRESHOLD 15
+#define TEMP_HOT_THRESHOLD 40
+#define HUMID_DRY_THRESHOLD 30.0
+#define HUMID_WET_THRESHOLD 70.0
+#define SMOKE_PPM_MAX 10000
+#define SMOKE_PPM_MIN 0
 
 #endif // _SENSOR_CONFIG_H
