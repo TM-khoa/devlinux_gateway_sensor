@@ -11,10 +11,11 @@
 #include "endecode_helper.h"
 #include "gateway.h"
 
-
+static const char *TAG = "CONN";
 size_t sgp_reply(parse_result_t result, uint8_t *reply, size_t cap);
 
 static connmgr_t *p_connmgr;
+static sbuffer_t *p_sbuf;
 
 static fd_set read_fds;
 static int max_fd = 0;
@@ -38,9 +39,7 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
     for(uint8_t a = 0; a < no_adapter; a++) {
         if(port_offset == p_adapter[a]->port_offset) {
             conn->adapter = p_adapter[a];
-            char s[30] = {0};
-            snprintf(s, sizeof(s), "DEBUG:Found adapter of:%s\n", conn->adapter->name);
-            ldebug(s);
+            ldebug("%s: Found adapter of:%s", TAG, conn->adapter->name);
             return 0;
         }
     }
@@ -53,6 +52,7 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
 int handle_connection()
 {
     printf("Waiting new connection\n");
+    char s[100] = {0};
     while (stop_handle_conn == false) {
         FD_ZERO(&read_fds);
         FD_SET(g_connmgr_stoppipefd[0], &read_fds);
@@ -89,9 +89,8 @@ int handle_connection()
                 /* Should use local port instead official port when testing localhost */
                 client_port = local_port;
                 char *client_ip = inet_ntoa(client_addr.sin_addr);
-                printf("Client connected from IP: %s, Port: %d\n", client_ip, client_port);
+                ldebug("%s:Client connected from IP: %s, Port: %d", TAG, client_ip, client_port);
                 if(conn_fd < 0) {
-                    char s[50] = {0};
                     snprintf(s,sizeof(s), "Connection attempt failed on %u port, reason:accept error", client_port);
                     ipc_write_logprocess(s);
                     perror("Accept failed");
@@ -109,7 +108,7 @@ int handle_connection()
                     /* If found existed client connection */
                     if(conn.fd == conn_fd){
                         conn_existed = true;
-                        printf("Found existed connection\n");
+                        ldebug("%s: Found existed connection", TAG);
                         break;
                     }
                 }
@@ -121,6 +120,7 @@ int handle_connection()
                 }
                 conn.rx_len = (size_t)valread;
                 conn.rx[valread] = '\0'; // Add NULL-terminate string
+                ldebug("%s: valread %ld", TAG, valread);
 
                 /* Register new client connection to reuse */
                 if(conn_existed == false) {
@@ -143,14 +143,13 @@ int handle_connection()
                         }
                         continue;
                     }
-                    char s[50] = {0};
                     snprintf(s,sizeof(s), "A sensor node with %u has opened a new connection\n", sensor.id);
                     ipc_write_logprocess(s);
                     conn.identified = true;
                     conn.sensor_id = sensor.id;
                     /* Add new connection to connection manager */
                     p_connmgr->conns[n_conns] = conn;
-                    printf("n_conns:%lu\n", n_conns);
+                    ldebug("%s: n_conns:%lu", TAG, n_conns);
                     p_connmgr->n_conns++;
                 }
                 /* If existed client connection */
@@ -161,15 +160,17 @@ int handle_connection()
                         continue;
                     }
                 }
-                printf("Sensor ID:%u\n", sensor.id);
-                printf("Sensor type:%s\n",sensor_type_to_str(sensor.type));
-                printf("Sensor value:%.2f\n", sensor.value);
-                printf("Timestamp:%ld\n",sensor.ts);
+                ldebug("%s: Sensor ID:%u", TAG, sensor.id);
+                ldebug("%s: Sensor type:%s", TAG, sensor_type_to_str(sensor.type));
+                ldebug("%s: Sensor value:%.2f", TAG, sensor.value);
+                ldebug("%s: Timestamp:%ld", TAG, sensor.ts);
+                ldebug("%s: Put sensor data to sbuffer", TAG);
+                sbuffer_insert(p_sbuf, &sensor);
             }
         }
     }
     /* Close client connection */
-    printf("Release resource client connection\n");
+    ldebug("%s: Release resource client connection", TAG);
     size_t n_conns = p_connmgr->n_conns;
     for(unsigned long c = 0; c < n_conns; c++) {
         connection_t conn = p_connmgr->conns[c];
@@ -181,7 +182,7 @@ int handle_connection()
         p_connmgr->conns[c] = conn;
     }
     /* Close listening port on server */
-    printf("Release resource listen port\n");
+    ldebug("%s: Release resource listen port", TAG);
     for (int p = 0; p < NUM_PORTS; p++) {
         int listen_fd = p_connmgr->listen_fd[p];
         if (listen_fd != -1 && close(listen_fd) == -1) {
@@ -200,9 +201,10 @@ void connmgr_stop()
     stop_handle_conn = true;
 }
 
-void connmgr_start(connmgr_t *connmgr, uint16_t baseport)
+void connmgr_start(connmgr_t *connmgr, uint16_t baseport, sbuffer_t *sbuf)
 {
     p_connmgr = connmgr;
+    p_sbuf = sbuf;
     p_connmgr->n_conns = 0;
     stop_handle_conn = false;
     base_port = baseport;
@@ -219,7 +221,7 @@ void connmgr_start(connmgr_t *connmgr, uint16_t baseport)
     max_fd = g_connmgr_stoppipefd[0];
 
     for (int i = 0; i < NUM_PORTS; i++) {
-        printf("Listening on port:%u\n", baseport + i);
+        ldebug("%s: Listening on port:%u", TAG, baseport + i);
         listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 
         struct sockaddr_in addr;

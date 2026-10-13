@@ -29,10 +29,20 @@ static uint16_t g_base_port = 0;
 static gateway_t gw;
 int g_connmgr_stoppipefd[2];
 
-void ldebug(const char* str)
+void ldebug(const char* str, ...)
 {
 #ifdef DEBUG
-    printf("DEBUG: %s", str);
+    char s[100] = {0};
+    va_list ParamList;
+    va_start(ParamList, str);
+    int r = vsnprintf(s, sizeof(s), str, ParamList);
+    if(r > 0) {
+        printf("%s\n", s);
+    }
+    else {
+        printf("Error when print debug, r:%d\n", r);
+    }
+    va_end(ParamList);
 #else
     (void)str;
 #endif
@@ -73,20 +83,17 @@ void* thread_connmgr(void* arg) {
     fcntl(g_connmgr_stoppipefd[0], F_SETFL, O_NONBLOCK);
     fcntl(g_connmgr_stoppipefd[1], F_SETFL, O_NONBLOCK);
     ipc_write_logprocess("CONN Created");
-    connmgr_start(&gw.conn, g_base_port);
+    connmgr_start(&gw.conn, g_base_port, &gw.sbuf);
     while(1) {
-        ldebug("connmgr mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("connmgr get signal\n");
+            ldebug("CONN get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
-        ldebug("connmgr mutex unlock\n");
         pthread_mutex_unlock(&g_sigmutex);
-        sleep(1);
     }
-    ldebug("connmgr terminated\n");
+    ldebug("connmgr terminated");
     ipc_write_logprocess("CONN terminated");
     return NULL;
 }
@@ -95,19 +102,18 @@ void* thread_datamgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
     ipc_write_logprocess("DATA Created");
+    datamgr_start(&gw.data, &gw.sbuf);
     while(1) {
-        ldebug("datamgr mutex lock\n");
+        datamgr_read();
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("datamgr get signal\n");
+            ldebug("DATA get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
-        ldebug("datamgr mutex unlock\n");
         pthread_mutex_unlock(&g_sigmutex);
-        sleep(1);
     }
-    ldebug("datamgr terminated\n");
+    ldebug("datamgr terminated");
     ipc_write_logprocess("DATA terminated");
     return NULL;
 }
@@ -116,24 +122,23 @@ void* thread_storagemgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
     ipc_write_logprocess("STOR Created");
+    stormgr_start(&gw.stor, &gw.sbuf);
     while(1) {
-        ldebug("storemgr mutex lock\n");
+        stormgr_read();
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("storemgr get signal\n");
+            ldebug("STOR get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
-        ldebug("storemgr mutex unlock\n");
         pthread_mutex_unlock(&g_sigmutex);
-        sleep(1);
     }
-    ldebug("storemgr terminated\n");
+    ldebug("storemgr terminated");
     ipc_write_logprocess("STOR terminated");
     return NULL;
 }
 
-void handle_sigint(int sig) {
+void handle_signal(int sig) {
     /* Note: Use only async-signal-safe functions inside handlers (like write) */
     gw.stop = 1;
     connmgr_stop();
@@ -141,8 +146,8 @@ void handle_sigint(int sig) {
     const char dummy = 1;
     write(g_connmgr_stoppipefd[1], &dummy, 1);
 
-    const char msgint[] = "\nSignal handler:SIGINT Exiting cleanly\n";
-    const char msgterm[] = "\nSignal handler:SIGTERM Exiting cleanly\n";
+    const char msgint[] = "\nSIG:SIGINT Exiting cleanly\n";
+    const char msgterm[] = "\nSIG:SIGTERM Exiting cleanly\n";
     switch(sig) {
         case SIGINT:
             write(STDOUT_FILENO, msgint, sizeof(msgint) - 1);
@@ -159,7 +164,7 @@ int create_signal_handler()
     struct sigaction sa;
 
     /* Point the structure to our custom handler function */
-    sa.sa_handler = &handle_sigint;
+    sa.sa_handler = &handle_signal;
 
     /* Clear the signal mask during execution */
     sigemptyset(&sa.sa_mask);
@@ -182,7 +187,10 @@ int create_signal_handler()
 int server_bringup(int fd) {
     pthread_t *thread_list[THREAD_NUM]= {&threadConnmgr, &threadDatamgr, &threadStoragemgr};
     pthreadfunc pthreadfunc_list[THREAD_NUM] = {thread_connmgr, thread_datamgr, thread_storagemgr};
+
     pthread_mutex_init(&g_sigmutex, NULL);
+    sbuffer_init(&gw.sbuf);
+
     printf("Gateway started...\n");
     ipc_write_logprocess("MAIN Gateway started...");
     for(int i = 0; i < THREAD_NUM; i++) {
@@ -194,18 +202,17 @@ int server_bringup(int fd) {
     }
 
     while(1) {
-        ldebug("main mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("main receive signal\n");
+            ldebug("main receive signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
-        ldebug("main mutex unlock\n");
         pthread_mutex_unlock(&g_sigmutex);
-        sleep(1);
     }
-    ldebug("main - join thread \n");
+    sbuffer_shutdown(&gw.sbuf);
+    sbuffer_destroy(&gw.sbuf);
+    ldebug("main - join thread ");
 
     for(int i = 0; i < THREAD_NUM; i++) {
         if (pthread_join(*thread_list[i], NULL) != 0) {
@@ -213,6 +220,7 @@ int server_bringup(int fd) {
             return 1;
         }
     }
+
 
     ipc_write_logprocess("MAIN Gateway is shutting down");
     printf("Gateway is shutting down\n");
@@ -252,7 +260,6 @@ int main(int argc, char **argv) {
                 gw_log_write(tok);
                 tok = strtok(NULL, "\n");
             }
-            printf("Child received: %s\n", buf);
             memset(buf, 0, sizeof(buf));
         }
         close(fd);
