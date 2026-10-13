@@ -24,6 +24,7 @@ static pthread_t threadDatamgr;
 static pthread_t threadStoragemgr;
 
 static pthread_mutex_t g_sigmutex;
+static int g_logpipefifo_fd = -1;
 
 static gateway_t gw;
 
@@ -36,19 +37,36 @@ void ldebug(const char* str)
 #endif
 }
 
-void ipc_write_logprocess(int fd, const char *msg)
+int ipc_write_logprocess(const char *msg)
 {
+    ssize_t wlen;
+    if(g_logpipefifo_fd == -1) {
+        return -1;
+    }
     /* use strlen(msg) instead of strlen(msg) + 1 because 
      * we use terminated character \n to split out message, 
      * not NULL character */
-    write(fd, (const void*)msg, strlen(msg));
-    write(fd, (const void*)"\n", 1);
+    wlen = write(g_logpipefifo_fd, (const void*)msg, strlen(msg));
+    if(wlen == -1) {
+        const char errpipe[] = "Fail to write data to pipe";
+        int err = close(g_logpipefifo_fd);
+        if (err == -1) {
+            const char errclose[] = "Fail to close log file fifo";
+            write(STDOUT_FILENO, errclose, sizeof(errclose) - 1);
+            return -1;
+        }
+        write(STDOUT_FILENO, errpipe, sizeof(errpipe) - 1);
+        return -1;
+
+    }
+    write(g_logpipefifo_fd, (const void*)"\n", 1);
+    return 0;
 }
 
 void* thread_connmgr(void* arg) {
-    int fd = *(int*)arg;
+    (void)arg;
     printf("%s created\n", __func__);
-    ipc_write_logprocess(fd, "CONN Created");
+    ipc_write_logprocess("CONN Created");
     while(1) {
         ldebug("connmgr mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
@@ -62,14 +80,14 @@ void* thread_connmgr(void* arg) {
         sleep(1);
     }
     ldebug("connmgr terminated\n");
-    ipc_write_logprocess(fd, "CONN terminated");
+    ipc_write_logprocess("CONN terminated");
     return NULL;
 }
 
 void* thread_datamgr(void* arg) {
-    int fd = *(int*)arg;
+    (void)arg;
     printf("%s created\n", __func__);
-    ipc_write_logprocess(fd, "DATA Created");
+    ipc_write_logprocess("DATA Created");
     while(1) {
         ldebug("datamgr mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
@@ -83,14 +101,14 @@ void* thread_datamgr(void* arg) {
         sleep(1);
     }
     ldebug("datamgr terminated\n");
-    ipc_write_logprocess(fd, "DATA terminated");
+    ipc_write_logprocess("DATA terminated");
     return NULL;
 }
 
 void* thread_storagemgr(void* arg) {
-    int fd = *(int*)arg;
+    (void)arg;
     printf("%s created\n", __func__);
-    ipc_write_logprocess(fd, "STOR Created");
+    ipc_write_logprocess("STOR Created");
     while(1) {
         ldebug("storemgr mutex lock\n");
         pthread_mutex_lock(&g_sigmutex);
@@ -104,12 +122,12 @@ void* thread_storagemgr(void* arg) {
         sleep(1);
     }
     ldebug("storemgr terminated\n");
-    ipc_write_logprocess(fd, "STOR terminated");
+    ipc_write_logprocess("STOR terminated");
     return NULL;
 }
 
 void handle_sigint(int sig) {
-    // Note: Use only async-signal-safe functions inside handlers (like write)
+    /* Note: Use only async-signal-safe functions inside handlers (like write) */
     gw.stop = 1;
     const char msgint[] = "\nSignal handler:SIGINT Exiting cleanly\n";
     const char msgterm[] = "\nSignal handler:SIGTERM Exiting cleanly\n";
@@ -120,7 +138,7 @@ void handle_sigint(int sig) {
         case SIGTERM: 
             write(STDOUT_FILENO, msgterm, sizeof(msgterm) - 1);
             break;
-        // Add other signals as needed
+        /* Add other signals as needed */
     }
 }
 
@@ -128,20 +146,20 @@ int create_signal_handler()
 {
     struct sigaction sa;
 
-    // Point the structure to our custom handler function
+    /* Point the structure to our custom handler function */
     sa.sa_handler = &handle_sigint;
 
-    // Clear the signal mask during execution
+    /* Clear the signal mask during execution */
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
 
-    // Register the handler for SIGINT (Ctrl+C)
+    /* Register the handler for SIGINT (Ctrl+C) */
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         perror("Error registering SIGINT");
         return 1;
     }
 
-    // Register the handler for SIGTERM
+    /* Register the handler for SIGTERM */
     if (sigaction(SIGTERM, &sa, NULL) == -1) {
         perror("Error registering SIGTERM");
         return 1;
@@ -154,7 +172,7 @@ int server_bringup(int fd) {
     pthreadfunc pthreadfunc_list[THREAD_NUM] = {thread_connmgr, thread_datamgr, thread_storagemgr};
     pthread_mutex_init(&g_sigmutex, NULL);
     printf("Gateway started...\n");
-    ipc_write_logprocess(fd, "MAIN Gateway started...");
+    ipc_write_logprocess("MAIN Gateway started...");
     for(int i = 0; i < THREAD_NUM; i++) {
         if (pthread_create(thread_list[i], NULL, pthreadfunc_list[i], (void*)&fd) != 0) {
             perror("Failed to create thread");
@@ -184,7 +202,7 @@ int server_bringup(int fd) {
         }
     }
 
-    ipc_write_logprocess(fd, "MAIN Gateway is shutting down");
+    ipc_write_logprocess("MAIN Gateway is shutting down");
     printf("Gateway is shutting down\n");
     sleep(1); // Wait for child process to complete write log
     return 0;
@@ -202,7 +220,7 @@ int main() {
     pid_t pid = fork();
 
     if (pid == 0) {
-        // Child: Read from FIFO
+        /* Child: Read from FIFO */
         int fd = open(FIFO_PATH, O_RDONLY);
         char buf[512] = {0};
         while(1) {
@@ -224,8 +242,16 @@ int main() {
         }
         close(fd);
     } else {
-        // Parent: Write to FIFO
+        /* Parent: Write to FIFO */
         int fd = open(FIFO_PATH, O_WRONLY);
+        if (fd == -1) {
+            /* Option A: Print standard error message automatically */
+            perror("Error opening file"); 
+            /* Option B: Get explicit error string using errno */
+            /* printf("Failed: %s\n", strerror(errno));  */
+            return 1;
+        }
+        g_logpipefifo_fd = fd;
         server_bringup(fd);
         close(fd);
         unlink(FIFO_PATH); // Remove FIFO file when done
