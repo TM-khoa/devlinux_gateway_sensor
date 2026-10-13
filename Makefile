@@ -1,6 +1,5 @@
 CC = gcc
 CFLAGS=-Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread
-# CFLAGS+=-DDEBUG
 AR = ar
 ARFLAGS = rcs
 SRC_PATH=./src
@@ -13,6 +12,7 @@ OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
 AR_RAW_NAME+=connection_manager
 AR_RAW_NAME+=endecode_helper
 AR_RAW_NAME+=logger
+AR_RAW_NAME+=share_buffer
 AR_LINKER= $(patsubst %, -l%, $(AR_RAW_NAME))
 AR_OBJ= $(patsubst %, $(OBJ_PATH)/%.o, $(AR_RAW_NAME))
 AR_LIB_NAME=$(patsubst %, $(LIB_PATH)/lib%.a, $(AR_RAW_NAME))
