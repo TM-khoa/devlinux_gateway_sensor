@@ -9,7 +9,9 @@
 #include "protocol_adapter.h"
 #include "connection_manager.h"
 #include "endecode_helper.h"
+#include "logger.h"
 #include "gateway.h"
+
 
 static const char *TAG = "CONN";
 size_t sgp_reply(parse_result_t result, uint8_t *reply, size_t cap);

@@ -41,6 +41,5 @@ typedef struct {
 } gateway_t;
 
 int ipc_write_logprocess(const char *msg);
-void ldebug(const char* str, ...);
 
 #endif //_SEVER_H_

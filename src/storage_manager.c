@@ -1,6 +1,7 @@
 #include "storage_manager.h"
 #include "endecode_helper.h"
 #include "gateway.h"
+#include "logger.h"
 
 static storagemgr_t *p_stormgr;
 static sbuffer_t *p_sbuf;

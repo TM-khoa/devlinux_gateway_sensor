@@ -29,25 +29,6 @@ static uint16_t g_base_port = 0;
 static gateway_t gw;
 int g_connmgr_stoppipefd[2];
 
-void ldebug(const char* str, ...)
-{
-#ifdef DEBUG
-    char s[100] = {0};
-    va_list ParamList;
-    va_start(ParamList, str);
-    int r = vsnprintf(s, sizeof(s), str, ParamList);
-    if(r > 0) {
-        printf("%s\n", s);
-    }
-    else {
-        printf("Error when print debug, r:%d\n", r);
-    }
-    va_end(ParamList);
-#else
-    (void)str;
-#endif
-}
-
 int ipc_write_logprocess(const char *msg)
 {
     ssize_t wlen;

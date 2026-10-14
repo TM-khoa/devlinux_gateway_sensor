@@ -1,6 +1,7 @@
 #include "data_manager.h"
 #include "endecode_helper.h"
 #include "gateway.h"
+#include "logger.h"
 
 static datamgr_t *p_datmgr;
 static sbuffer_t *p_sbuf;

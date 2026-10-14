@@ -46,3 +46,22 @@ void gw_log_write(const char *msg)
     pthread_mutex_unlock(&g_log_mutex);
 }
 
+void ldebug(const char* str, ...)
+{
+#ifdef DEBUG
+    char s[100] = {0};
+    va_list ParamList;
+    va_start(ParamList, str);
+    int r = vsnprintf(s, sizeof(s), str, ParamList);
+    if(r > 0) {
+        printf("%s\n", s);
+    }
+    else {
+        printf("Error when print debug, r:%d\n", r);
+    }
+    va_end(ParamList);
+#else
+    (void)str;
+#endif
+}
+

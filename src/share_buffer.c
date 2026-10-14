@@ -1,6 +1,6 @@
 #include "share_buffer.h"
 #include <stdlib.h>
-#include "gateway.h"
+#include "logger.h"
 
 static const char* TAG="SBUF";
 
