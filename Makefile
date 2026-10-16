@@ -51,8 +51,8 @@ $(AR_LIB_NAME): $(AR_OBJ) | lib
 client: $(OBJ_PATH)/client.o  $(AR_LIB_NAME) | bin obj
 	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
 
-gateway: $(OBJ_PATH)/gateway.o  $(AR_LIB_NAME) | bin obj
-	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@
+gateway: $(OBJ_PATH)/gateway.o $(AR_LIB_NAME) | bin obj
+	$(CC) $(CFLAGS) $< $(AR_LINKER_PATH) $(AR_LINKER) -o $(BIN_PATH)/$@ -lsqlite3
 
 .PHONY: clean run all
 clean:

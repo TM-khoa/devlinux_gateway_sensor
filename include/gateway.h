@@ -12,6 +12,8 @@
 #include "storage_manager.h"
 #include "share_buffer.h"
 
+
+#define DATABASE_NAME "gateway.db"
 /* ---- Shared status (shared memory) ---- */
 typedef struct {
     sensor_id_t id; uint16_t room; sensor_type_t type;

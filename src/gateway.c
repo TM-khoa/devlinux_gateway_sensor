@@ -5,13 +5,11 @@
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
 #include "logger.h"
 #include <stdint.h>
-
 #include "gateway.h"
 
 #define THREAD_NUM 3
@@ -22,7 +20,7 @@ typedef void* (*pthreadfunc)(void*);
 static pthread_t threadConnmgr;
 static pthread_t threadDatamgr;
 static pthread_t threadStoragemgr;
-
+const char* TAG="MAIN";
 static pthread_mutex_t g_sigmutex;
 static int g_logpipefifo_fd = -1;
 static uint16_t g_base_port = 0;
@@ -68,13 +66,13 @@ void* thread_connmgr(void* arg) {
     while(1) {
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("CONN get signal");
+            LDB("CONN get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
         pthread_mutex_unlock(&g_sigmutex);
     }
-    ldebug("connmgr terminated");
+    LDB("connmgr terminated");
     ipc_write_logprocess("CONN terminated");
     return NULL;
 }
@@ -88,13 +86,13 @@ void* thread_datamgr(void* arg) {
         datamgr_read();
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("DATA get signal");
+            LDB("DATA get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
         pthread_mutex_unlock(&g_sigmutex);
     }
-    ldebug("datamgr terminated");
+    LDB("datamgr terminated");
     ipc_write_logprocess("DATA terminated");
     return NULL;
 }
@@ -103,18 +101,35 @@ void* thread_storagemgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
     ipc_write_logprocess("STOR Created");
-    stormgr_start(&gw.stor, &gw.sbuf);
-    while(1) {
-        stormgr_read();
+    if (stormgr_start(&gw.stor, DATABASE_NAME, &gw.sbuf) != 0) {
+        LDB("Error: Fail to start storage manager");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * DB connection established.
+     * Now we are allowed to read sensor data.
+     */
+    while (1) {
+        sensor_data_t sensor;
+        if (sbuffer_read(
+                    &gw.sbuf,
+                    &sensor,
+                    READER_STORAGE) == 0) {
+            LDB("Get sensor data, put to database");
+            stormgr_insert(&sensor);
+        }
+        else { usleep(10000); }
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("STOR get signal");
+            LDB("STOR get signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
         pthread_mutex_unlock(&g_sigmutex);
     }
-    ldebug("storemgr terminated");
+    stormgr_stop();
+    LDB("storemgr terminated");
     ipc_write_logprocess("STOR terminated");
     return NULL;
 }
@@ -185,7 +200,7 @@ int server_bringup(int fd) {
     while(1) {
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
-            ldebug("main receive signal");
+            LDB("main receive signal");
             pthread_mutex_unlock(&g_sigmutex);
             break;
         }
@@ -193,7 +208,7 @@ int server_bringup(int fd) {
     }
     sbuffer_shutdown(&gw.sbuf);
     sbuffer_destroy(&gw.sbuf);
-    ldebug("main - join thread ");
+    LDB("main - join thread ");
 
     for(int i = 0; i < THREAD_NUM; i++) {
         if (pthread_join(*thread_list[i], NULL) != 0) {
