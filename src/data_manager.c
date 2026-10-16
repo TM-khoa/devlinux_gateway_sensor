@@ -20,7 +20,7 @@ int datamgr_start(datamgr_t *datmgr, sbuffer_t *sbuf)
 void datamgr_read()
 {
     sensor_data_t sensor;
-    ldebug("DATA: Start to read sbuf");
+    LDB("DATA: Start to read sbuf");
     if(sbuffer_read(p_sbuf, &sensor, READER_DATA) == 0)
     {
         printf("DATA-----------------------\n");

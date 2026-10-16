@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <string.h>
 
 static uint64_t g_seq = 0;
 static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -46,13 +48,15 @@ void gw_log_write(const char *msg)
     pthread_mutex_unlock(&g_log_mutex);
 }
 
-void ldebug(const char* str, ...)
+void ldebug(const char *TAG, const char* str, ...)
 {
 #ifdef DEBUG
     char s[100] = {0};
+    strcat(s, TAG);
+    strcat(s, " - ");
     va_list ParamList;
     va_start(ParamList, str);
-    int r = vsnprintf(s, sizeof(s), str, ParamList);
+    int r = vsnprintf(s + strlen(s), sizeof(s), str, ParamList);
     if(r > 0) {
         printf("%s\n", s);
     }
@@ -61,6 +65,7 @@ void ldebug(const char* str, ...)
     }
     va_end(ParamList);
 #else
+    (void)TAG;
     (void)str;
 #endif
 }

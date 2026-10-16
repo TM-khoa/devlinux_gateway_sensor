@@ -17,7 +17,7 @@ static void sbuffer_cleanup(sbuffer_t *buffer)
             buffer->tail = NULL;
 
         free(tmp);
-        ldebug("%s: cleanup, size:%d", TAG, buffer->size);
+        LDB("cleanup, size:%d", buffer->size);
         buffer->size--;
     }
 }
@@ -38,18 +38,24 @@ int sbuffer_init(sbuffer_t *buffer)
 int sbuffer_insert(sbuffer_t *buffer,
                    const sensor_data_t *data)
 {
-    sbuffer_node_t *node = malloc(sizeof(*node));
-    ldebug("%s: insert data", TAG);
-
-    if (node == NULL)
+    if(buffer == NULL || data == NULL) {
+        LDB("buffer or data is NULL");
         return -1;
+    }
+    sbuffer_node_t *node = malloc(sizeof(*node));
+    LDB("insert data");
+
+    if (node == NULL) {
+        LDB("Fail to malloc node");
+        return -1;
+    }
 
     node->data = *data;
     node->read_by_data = false;
     node->read_by_storage = false;
     node->next = NULL;
 
-    ldebug("%s: insert mutex lock", TAG);
+    LDB("insert mutex lock");
     pthread_mutex_lock(&buffer->lock);
 
     if (buffer->tail == NULL) {
@@ -62,10 +68,10 @@ int sbuffer_insert(sbuffer_t *buffer,
 
     buffer->size++;
 
-    ldebug("%s: insert cond_broadcast", TAG);
+    LDB("insert cond_broadcast");
     pthread_cond_broadcast(&buffer->not_empty);
 
-    ldebug("%s: insert mutex unlock", TAG);
+    LDB("insert mutex unlock");
     pthread_mutex_unlock(&buffer->lock);
 
     return 0;
@@ -76,7 +82,7 @@ int sbuffer_read(sbuffer_t *buffer,
                  reader_type_t reader)
 {
     pthread_mutex_lock(&buffer->lock);
-    ldebug("%s: read lock mutex", TAG);
+    LDB("read lock mutex");
 
     while (1)
     {
@@ -97,7 +103,7 @@ int sbuffer_read(sbuffer_t *buffer,
                     node->read_by_data = true;
                 else
                     node->read_by_storage = true;
-                ldebug("%s: call sbuffer_cleanup", TAG);
+                LDB("call sbuffer_cleanup");
                 sbuffer_cleanup(buffer);
                 pthread_mutex_unlock(&buffer->lock);
                 return 0;
@@ -111,11 +117,11 @@ int sbuffer_read(sbuffer_t *buffer,
          */
         if (buffer->shutdown)
         {
-            ldebug("%s: read shutdown mutex unlock", TAG);
+            LDB("read shutdown mutex unlock");
             pthread_mutex_unlock(&buffer->lock);
             return -1;
         }
-        ldebug("%s: read cond_wait", TAG);
+        LDB("read cond_wait");
         pthread_cond_wait(&buffer->not_empty,
                           &buffer->lock);
     }
@@ -125,9 +131,9 @@ void sbuffer_shutdown(sbuffer_t *buffer)
 {
     pthread_mutex_lock(&buffer->lock);
 
-    ldebug("%s: Shutdown", TAG);
+    LDB("Shutdown");
     buffer->shutdown = true;
-    ldebug("%s: cond broadcast not_empty", TAG);
+    LDB("cond broadcast not_empty");
 
     pthread_cond_broadcast(&buffer->not_empty);
 
@@ -138,13 +144,13 @@ void sbuffer_destroy(sbuffer_t *buffer)
 {
     pthread_mutex_lock(&buffer->lock);
 
-    ldebug("%s: destroy", TAG);
+    LDB("destroy");
     sbuffer_node_t *curr = buffer->head;
 
     while (curr)
     {
         sbuffer_node_t *next = curr->next;
-        ldebug("%s: free", TAG);
+        LDB("free");
         free(curr);
         curr = next;
     }
@@ -158,3 +164,4 @@ void sbuffer_destroy(sbuffer_t *buffer)
     pthread_mutex_destroy(&buffer->lock);
     pthread_cond_destroy(&buffer->not_empty);
 }
+

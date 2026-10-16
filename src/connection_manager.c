@@ -41,7 +41,7 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
     for(uint8_t a = 0; a < no_adapter; a++) {
         if(port_offset == p_adapter[a]->port_offset) {
             conn->adapter = p_adapter[a];
-            ldebug("%s: Found adapter of:%s", TAG, conn->adapter->name);
+            LDB("%s: Found adapter of:%s", TAG, conn->adapter->name);
             return 0;
         }
     }
@@ -91,7 +91,7 @@ int handle_connection()
                 /* Should use local port instead official port when testing localhost */
                 client_port = local_port;
                 char *client_ip = inet_ntoa(client_addr.sin_addr);
-                ldebug("%s:Client connected from IP: %s, Port: %d", TAG, client_ip, client_port);
+                LDB("%s:Client connected from IP: %s, Port: %d", TAG, client_ip, client_port);
                 if(conn_fd < 0) {
                     snprintf(s,sizeof(s), "Connection attempt failed on %u port, reason:accept error", client_port);
                     ipc_write_logprocess(s);
@@ -110,7 +110,7 @@ int handle_connection()
                     /* If found existed client connection */
                     if(conn.fd == conn_fd){
                         conn_existed = true;
-                        ldebug("%s: Found existed connection", TAG);
+                        LDB("%s: Found existed connection", TAG);
                         break;
                     }
                 }
@@ -122,7 +122,7 @@ int handle_connection()
                 }
                 conn.rx_len = (size_t)valread;
                 conn.rx[valread] = '\0'; // Add NULL-terminate string
-                ldebug("%s: valread %ld", TAG, valread);
+                LDB("%s: valread %ld", TAG, valread);
 
                 /* Register new client connection to reuse */
                 if(conn_existed == false) {
@@ -151,7 +151,7 @@ int handle_connection()
                     conn.sensor_id = sensor.id;
                     /* Add new connection to connection manager */
                     p_connmgr->conns[n_conns] = conn;
-                    ldebug("%s: n_conns:%lu", TAG, n_conns);
+                    LDB("%s: n_conns:%lu", TAG, n_conns);
                     p_connmgr->n_conns++;
                 }
                 /* If existed client connection */
@@ -162,17 +162,17 @@ int handle_connection()
                         continue;
                     }
                 }
-                ldebug("%s: Sensor ID:%u", TAG, sensor.id);
-                ldebug("%s: Sensor type:%s", TAG, sensor_type_to_str(sensor.type));
-                ldebug("%s: Sensor value:%.2f", TAG, sensor.value);
-                ldebug("%s: Timestamp:%ld", TAG, sensor.ts);
-                ldebug("%s: Put sensor data to sbuffer", TAG);
+                LDB("%s: Sensor ID:%u", TAG, sensor.id);
+                LDB("%s: Sensor type:%s", TAG, sensor_type_to_str(sensor.type));
+                LDB("%s: Sensor value:%.2f", TAG, sensor.value);
+                LDB("%s: Timestamp:%ld", TAG, sensor.ts);
+                LDB("%s: Put sensor data to sbuffer", TAG);
                 sbuffer_insert(p_sbuf, &sensor);
             }
         }
     }
     /* Close client connection */
-    ldebug("%s: Release resource client connection", TAG);
+    LDB("%s: Release resource client connection", TAG);
     size_t n_conns = p_connmgr->n_conns;
     for(unsigned long c = 0; c < n_conns; c++) {
         connection_t conn = p_connmgr->conns[c];
@@ -184,7 +184,7 @@ int handle_connection()
         p_connmgr->conns[c] = conn;
     }
     /* Close listening port on server */
-    ldebug("%s: Release resource listen port", TAG);
+    LDB("%s: Release resource listen port", TAG);
     for (int p = 0; p < NUM_PORTS; p++) {
         int listen_fd = p_connmgr->listen_fd[p];
         if (listen_fd != -1 && close(listen_fd) == -1) {
@@ -223,7 +223,7 @@ void connmgr_start(connmgr_t *connmgr, uint16_t baseport, sbuffer_t *sbuf)
     max_fd = g_connmgr_stoppipefd[0];
 
     for (int i = 0; i < NUM_PORTS; i++) {
-        ldebug("%s: Listening on port:%u", TAG, baseport + i);
+        LDB("%s: Listening on port:%u", TAG, baseport + i);
         listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 
         struct sockaddr_in addr;
