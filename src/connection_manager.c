@@ -59,7 +59,6 @@ static int register_new_connection_adapter(connection_t *conn, uint16_t port)
 int handle_connection()
 {
     printf("Waiting new connection\n");
-    char s[100] = {0};
     while (stop_handle_conn == false) {
         FD_ZERO(&read_fds);
         FD_SET(g_connmgr_stoppipefd[0], &read_fds);
@@ -98,8 +97,7 @@ int handle_connection()
                 char *client_ip = inet_ntoa(client_addr.sin_addr);
                 LDB("%s:Client connected from IP: %s, Port: %d", client_ip, client_port);
                 if(conn_fd < 0) {
-                    snprintf(s,sizeof(s), "Connection attempt failed on %u port, reason:accept error", client_port);
-                    ipc_write_logprocess(s);
+                    ipc_log_event("Connection attempt failed on %u port, reason:accept error", client_port);
                     perror("Accept failed");
                     exit(EXIT_FAILURE);
                 }
@@ -150,8 +148,7 @@ int handle_connection()
                         }
                         continue;
                     }
-                    snprintf(s,sizeof(s), "A sensor node with %u has opened a new connection\n", sensor.id);
-                    ipc_write_logprocess(s);
+                    ipc_log_event("A sensor node with %u has opened a new connection\n", sensor.id);
                     conn.identified = true;
                     conn.sensor_id = sensor.id;
                     /* Add new connection to connection manager */

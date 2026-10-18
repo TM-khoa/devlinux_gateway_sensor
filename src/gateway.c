@@ -29,7 +29,6 @@ static pthread_t threadDatamgr;
 static pthread_t threadStoragemgr;
 static pthread_mutex_t g_sigmutex;
 static int g_logpipefifo_fd = -1;
-static uint16_t g_base_port = 0;
 static gateway_t gw;
 int g_connmgr_stoppipefd[2];
 
@@ -59,6 +58,22 @@ int ipc_write_logprocess(const char *msg)
     return 0;
 }
 
+void ipc_log_event(const char *fmt, ...)
+{
+    char msg[100];
+    va_list args;
+
+    va_start(args, fmt);
+    (void)vsnprintf(msg, sizeof(msg), fmt, args);
+    va_end(args);
+
+    /* The IPC implementation owns delivery/error reporting. */
+    if(ipc_write_logprocess(msg) != 0){
+        fprintf(stderr, "Error: Fail to write log process pipe\n");
+    }
+}
+
+
 void* thread_connmgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
@@ -67,8 +82,8 @@ void* thread_connmgr(void* arg) {
     }
     fcntl(g_connmgr_stoppipefd[0], F_SETFL, O_NONBLOCK);
     fcntl(g_connmgr_stoppipefd[1], F_SETFL, O_NONBLOCK);
-    ipc_write_logprocess("CONN Created");
-    connmgr_start(&gw.conn, g_base_port, &gw.sbuf);
+    ipc_log_event("CONN Created");
+    connmgr_start(&gw.conn, gw.base_port, &gw.sbuf);
     while(1) {
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
@@ -79,14 +94,14 @@ void* thread_connmgr(void* arg) {
         pthread_mutex_unlock(&g_sigmutex);
     }
     LDB("connmgr terminated");
-    ipc_write_logprocess("CONN terminated");
+    ipc_log_event("CONN terminated");
     return NULL;
 }
 
 void* thread_datamgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
-    ipc_write_logprocess("DATA Created");
+    ipc_log_event("DATA Created");
     datamgr_start(&gw.data, &gw.sbuf);
     while(1) {
         datamgr_read();
@@ -99,14 +114,14 @@ void* thread_datamgr(void* arg) {
         pthread_mutex_unlock(&g_sigmutex);
     }
     LDB("datamgr terminated");
-    ipc_write_logprocess("DATA terminated");
+    ipc_log_event("DATA terminated");
     return NULL;
 }
 
 void* thread_storagemgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
-    ipc_write_logprocess("STOR Created");
+    ipc_log_event("STOR Created");
     if (stormgr_start(&gw.stor, DATABASE_NAME, &gw.sbuf) != 0) {
         LDB("Error: Fail to start storage manager");
         exit(EXIT_FAILURE);
@@ -136,7 +151,7 @@ void* thread_storagemgr(void* arg) {
     }
     stormgr_stop();
     LDB("storemgr terminated");
-    ipc_write_logprocess("STOR terminated");
+    ipc_log_event("STOR terminated");
     return NULL;
 }
 
@@ -194,7 +209,7 @@ int server_bringup(int fd) {
     sbuffer_init(&gw.sbuf);
 
     printf("Gateway started...\n");
-    ipc_write_logprocess("MAIN Gateway started...");
+    ipc_log_event("MAIN Gateway started...");
     for(int i = 0; i < THREAD_NUM; i++) {
         if (pthread_create(thread_list[i], NULL, pthreadfunc_list[i], (void*)&fd) != 0) {
             perror("Failed to create thread");
@@ -224,7 +239,7 @@ int server_bringup(int fd) {
     }
 
 
-    ipc_write_logprocess("MAIN Gateway is shutting down");
+    ipc_log_event("MAIN Gateway is shutting down");
     printf("Gateway is shutting down\n");
     sleep(1); // Wait for child process to complete write log
     return 0;
@@ -234,7 +249,8 @@ int server_bringup(int fd) {
 int main(int argc, char **argv) {
 
     (void)argc;
-    g_base_port = atoi(argv[1]);
+    gw.base_port = atoi(argv[1]);
+    gw.http_port = atoi(argv[2]);
     /* Must create signal hanlder before forking 
      * to make child process inherit signal handler */
     if(create_signal_handler() != 0) {

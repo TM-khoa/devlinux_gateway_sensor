@@ -51,7 +51,7 @@ static int storage_connect()
         return -1;
     }
     p_stormgr->state = SQL_CONNECTED;
-    ipc_write_logprocess("Connection to SQL server established.");
+    ipc_log_event("Connection to SQL server established.");
     LDB("Database connected, rc:%d", rc);
 
     return 0;
@@ -88,7 +88,7 @@ static int storage_create_table()
         sqlite3_free(errmsg);
         return -1;
     }
-    ipc_write_logprocess("New table SensorData created.");
+    ipc_log_event("New table SensorData created.");
     return 0;
 }
 
@@ -158,7 +158,7 @@ int stormgr_start(storagemgr_t *stormgr,
     }
 
     p_stormgr->state = SQL_DOWN;
-    ipc_write_logprocess("Unable to connect to SQL server.");
+    ipc_log_event("Unable to connect to SQL server.");
     fprintf(stderr,
             "Unable to connect database after %d attempts\n",
             MAX_DB_ATTEMPTS);
