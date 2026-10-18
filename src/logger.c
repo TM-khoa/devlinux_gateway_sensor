@@ -52,8 +52,12 @@ void ldebug(const char *TAG, const char* str, ...)
 {
 #ifdef DEBUG
     char s[100] = {0};
-    strcat(s, TAG);
-    strcat(s, " - ");
+    if(strcmp(TAG, "") == 0)
+        return;
+    if(TAG != NULL) {
+        strcat(s, TAG);
+        strcat(s, " - ");
+    }
     va_list ParamList;
     va_start(ParamList, str);
     int r = vsnprintf(s + strlen(s), sizeof(s), str, ParamList);

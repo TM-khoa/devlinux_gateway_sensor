@@ -13,7 +13,12 @@
 #include "gateway.h"
 
 
+#ifdef LOG_CONNMGR
 static const char *TAG = "CONN";
+#else
+static const char* TAG="";
+#endif
+
 size_t sgp_reply(parse_result_t result, uint8_t *reply, size_t cap);
 
 static connmgr_t *p_connmgr;

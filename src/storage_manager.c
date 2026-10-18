@@ -9,7 +9,12 @@
 static storagemgr_t *p_stormgr;
 static sbuffer_t *p_sbuf;
 
+#ifdef LOG_STORMGR
 static const char* TAG="STOR";
+#else
+static const char* TAG="";
+#endif
+
 const char *sentable = \
 "CREATE TABLE IF NOT EXISTS SensorData (\
 id INTEGER NOT NULL, \

@@ -2,7 +2,11 @@
 #include <stdlib.h>
 #include "logger.h"
 
+#ifdef LOG_SBUF
 static const char* TAG="SBUF";
+#else
+static const char* TAG="";
+#endif
 
 static void sbuffer_cleanup(sbuffer_t *buffer)
 {

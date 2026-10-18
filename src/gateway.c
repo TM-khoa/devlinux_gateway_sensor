@@ -16,11 +16,17 @@
 #define FIFO_PATH "./bin/logFifo"
 #define MAX_LOG_LEN 200
 
+#ifdef LOG_MAIN
+static const char* TAG="MAIN";
+#else
+static const char* TAG="";
+#endif
+
+
 typedef void* (*pthreadfunc)(void*);
 static pthread_t threadConnmgr;
 static pthread_t threadDatamgr;
 static pthread_t threadStoragemgr;
-const char* TAG="MAIN";
 static pthread_mutex_t g_sigmutex;
 static int g_logpipefifo_fd = -1;
 static uint16_t g_base_port = 0;
