@@ -248,7 +248,10 @@ int server_bringup(int fd) {
 
 int main(int argc, char **argv) {
 
-    (void)argc;
+    if(argc != 3) {
+        fprintf(stderr, "Must provide exactly two arguments for sensor base port and http port");
+        return -1;
+    }
     gw.base_port = atoi(argv[1]);
     gw.http_port = atoi(argv[2]);
     /* Must create signal hanlder before forking 
