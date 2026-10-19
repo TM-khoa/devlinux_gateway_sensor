@@ -22,15 +22,17 @@ AR_LINKER_PATH+=-L$(LIB_PATH)
 
 all: gateway client
 
+include log_option.mk
+
 gw:
-	$(BIN_PATH)/gateway 1234
+	$(BIN_PATH)/gateway 1234 8080
 
 cl:
 	$(BIN_PATH)/client temperature 10 127.0.0.1 1234 1000
-	$(BIN_PATH)/client humidity 21 127.0.0.1 1235 1000
-	$(BIN_PATH)/client motion 30 127.0.0.1 1236 1000
-	$(BIN_PATH)/client door 40 127.0.0.1 1236 1000
-	$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 1000
+	#$(BIN_PATH)/client humidity 21 127.0.0.1 1235 1000
+	#$(BIN_PATH)/client motion 30 127.0.0.1 1236 1000
+	#$(BIN_PATH)/client door 40 127.0.0.1 1236 1000
+	#$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 1000
 
 bin:
 	mkdir -p $(BIN_PATH)
