@@ -197,7 +197,7 @@ int server_bringup(int fd) {
     }
 
 
-    ipc_log_event("MAIN Gateway is shutting down");
+    ipc_log_event("MAIN Gateway is shutting down (receive signal handler)");
     printf("Gateway is shutting down\n");
     sleep(1); // Wait for child process to complete write log
     return 0;

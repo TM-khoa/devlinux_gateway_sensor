@@ -124,7 +124,8 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
                 total_consumed += consumed;
             }
             LDB("PARSE_OK, total_consumed:%lu, consumed:%lu, rxlen:%lu", total_consumed, consumed, rxlen);
-            if(conn->identified == false) { ipc_log_event("A sensor node with %u has opened a new connection", sensor.id);
+            if(conn->identified == false) { 
+                ipc_log_event("CONN A sensor node with %u has opened a new connection", sensor.id);
                 conn->identified = true;
             }
             if(conn->sensor_id != sensor.id) {
@@ -170,7 +171,7 @@ static void *thread_conn_worker(void *arg)
             /* Client performed an orderly TCP shutdown. */
             LDB("Worker: Client disconnect");
             if(conn->identified) {
-                ipc_log_event("A sensor node with %u has closed the connection", conn->sensor_id);
+                ipc_log_event("CONN A sensor node with %u has closed the connection", conn->sensor_id);
                 conn->identified = false;
             }
             break;
@@ -237,7 +238,7 @@ void conn_accept_and_dispatch()
                     if (errno == EINTR) {
                         continue;
                     }
-                    ipc_log_event("Connection attempt failed on %u port (accept error)", base_port + i);
+                    ipc_log_event("CONN Connection attempt failed on %u port (accept error)", base_port + i);
 
                     perror("accept");
                     continue;
@@ -282,7 +283,7 @@ void conn_accept_and_dispatch()
 
                 if (slot == NULL) {
                     fprintf(stderr, "Maximum connection slots reached\n");
-                    ipc_log_event("Connection attempt failed on %u port (too many connections)", base_port + i);
+                    ipc_log_event("CONN Connection attempt failed on %u port (too many connections)", base_port + i);
                     close(conn_fd);
                     continue;
                 }
