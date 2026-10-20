@@ -42,6 +42,5 @@ typedef struct {
     volatile sig_atomic_t stop;
 } gateway_t;
 
-void ipc_log_event(const char *fmt, ...);
 
 #endif //_SEVER_H_

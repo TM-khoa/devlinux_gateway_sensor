@@ -32,48 +32,6 @@ static int g_logpipefifo_fd = -1;
 static gateway_t gw;
 int g_connmgr_stoppipefd[2];
 
-int ipc_write_logprocess(const char *msg)
-{
-    ssize_t wlen;
-    if(g_logpipefifo_fd == -1) {
-        return -1;
-    }
-    /* use strlen(msg) instead of strlen(msg) + 1 because 
-     * we use terminated character \n to split out message, 
-     * not NULL character */
-    wlen = write(g_logpipefifo_fd, (const void*)msg, strlen(msg));
-    if(wlen == -1) {
-        const char errpipe[] = "Fail to write data to pipe";
-        int err = close(g_logpipefifo_fd);
-        if (err == -1) {
-            const char errclose[] = "Fail to close log file fifo";
-            write(STDOUT_FILENO, errclose, sizeof(errclose) - 1);
-            return -1;
-        }
-        write(STDOUT_FILENO, errpipe, sizeof(errpipe) - 1);
-        return -1;
-
-    }
-    write(g_logpipefifo_fd, (const void*)"\n", 1);
-    return 0;
-}
-
-void ipc_log_event(const char *fmt, ...)
-{
-    char msg[100];
-    va_list args;
-
-    va_start(args, fmt);
-    (void)vsnprintf(msg, sizeof(msg), fmt, args);
-    va_end(args);
-
-    /* The IPC implementation owns delivery/error reporting. */
-    if(ipc_write_logprocess(msg) != 0){
-        fprintf(stderr, "Error: Fail to write log process pipe\n");
-    }
-}
-
-
 void* thread_connmgr(void* arg) {
     (void)arg;
     printf("%s created\n", __func__);
@@ -270,7 +228,7 @@ int main(int argc, char **argv) {
         while(1) {
             ssize_t n = read(fd, buf, sizeof(buf) - 1);
             if(n == 0) {
-                printf("Child: EOF, close fd now\n");
+                printf("Logprocess: EOF, close fd now\n");
                 break;
             }
             /* IMPORTANT: strtok need NULL character to not cross over read buffer */
@@ -295,6 +253,7 @@ int main(int argc, char **argv) {
             return 1;
         }
         g_logpipefifo_fd = fd;
+        ipc_log_start(&g_logpipefifo_fd);
         server_bringup(fd);
         close(fd);
         unlink(FIFO_PATH); // Remove FIFO file when done
