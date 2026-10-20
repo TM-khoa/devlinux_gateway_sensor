@@ -222,95 +222,95 @@ void conn_accept_and_dispatch()
             struct sockaddr_in client_addr;
             socklen_t client_len = sizeof(client_addr);
             int listen_fd = p_connmgr->listen_fd[i];
+            if (FD_ISSET(listen_fd, &read_fds)) {
+                int conn_fd = accept(
+                        listen_fd,
+                        (struct sockaddr *)&client_addr,
+                        &client_len
+                        );
 
-            LDB("wait at accept");
-            int conn_fd = accept(
-                    listen_fd,
-                    (struct sockaddr *)&client_addr,
-                    &client_len
-                    );
+                if (conn_fd < 0) {
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    ipc_log_event("Connection attempt failed on %u port (accept error)", base_port + i);
 
-            if (conn_fd < 0) {
-                if (errno == EINTR) {
+                    perror("accept");
                     continue;
                 }
-                ipc_log_event("Connection attempt failed on %u port (accept error)", base_port + i);
+                LDB("accept OK");
 
-                perror("accept");
-                continue;
+                /* Determine the server-side local port. */
+                struct sockaddr_in local_addr;
+                socklen_t local_len = sizeof(local_addr);
+
+                if (getsockname(conn_fd,
+                            (struct sockaddr *)&local_addr,
+                            &local_len) < 0) {
+                    perror("getsockname");
+                    close(conn_fd);
+                    continue;
+                }
+
+                int server_port = ntohs(local_addr.sin_port);
+                int peer_port = ntohs(client_addr.sin_port);
+
+                char client_ip[INET_ADDRSTRLEN];
+
+                if (inet_ntop(AF_INET,
+                            &client_addr.sin_addr,
+                            client_ip,
+                            sizeof(client_ip)) == NULL) {
+                    perror("inet_ntop");
+                    close(conn_fd);
+                    continue;
+                }
+
+                LDB("Client %s:%d connected to server port %d",
+                        client_ip, peer_port, server_port);
+
+                connection_t *slot = claim_connection_slot(conn_fd);
+                if(conn_get_adapter(slot, server_port) != 0) {
+                    fprintf(stderr, "Fail to get adapter for port:%u\n", server_port);
+                    close(conn_fd);
+                    continue;
+                }
+
+                if (slot == NULL) {
+                    fprintf(stderr, "Maximum connection slots reached\n");
+                    ipc_log_event("Connection attempt failed on %u port (too many connections)", base_port + i);
+                    close(conn_fd);
+                    continue;
+                }
+
+                pthread_t thread;
+                int rc = pthread_create(&thread, NULL, thread_conn_worker, slot);
+
+                if (rc != 0) {
+                    /*
+                     * No worker was created, so release the socket and slot.
+                     * pthread_create returns an error number directly.
+                     */
+                    close(conn_fd);
+
+                    pthread_mutex_lock(&conn_mutex);
+                    slot->fd = -1;
+                    slot->adapter = NULL;
+                    slot->rx_len = 0;
+                    pthread_mutex_unlock(&conn_mutex);
+
+                    fprintf(stderr, "pthread_create: %s\n", strerror(rc));
+                    continue;
+                }
+
+                /* The worker releases its slot when the connection ends. */
+                rc = pthread_detach(thread);
+                if (rc != 0) {
+                    fprintf(stderr, "pthread_detach: %s\n", strerror(rc));
+                }
+                LDB("Detach with worker thread and break");
+                break;
             }
-            LDB("accept OK");
-
-            /* Determine the server-side local port. */
-            struct sockaddr_in local_addr;
-            socklen_t local_len = sizeof(local_addr);
-
-            if (getsockname(conn_fd,
-                        (struct sockaddr *)&local_addr,
-                        &local_len) < 0) {
-                perror("getsockname");
-                close(conn_fd);
-                continue;
-            }
-
-            int server_port = ntohs(local_addr.sin_port);
-            int peer_port = ntohs(client_addr.sin_port);
-
-            char client_ip[INET_ADDRSTRLEN];
-
-            if (inet_ntop(AF_INET,
-                        &client_addr.sin_addr,
-                        client_ip,
-                        sizeof(client_ip)) == NULL) {
-                perror("inet_ntop");
-                close(conn_fd);
-                continue;
-            }
-
-            LDB("Client %s:%d connected to server port %d",
-                    client_ip, peer_port, server_port);
-
-            connection_t *slot = claim_connection_slot(conn_fd);
-            if(conn_get_adapter(slot, server_port) != 0) {
-                fprintf(stderr, "Fail to get adapter for port:%u\n", server_port);
-                close(conn_fd);
-                continue;
-            }
-
-            if (slot == NULL) {
-                fprintf(stderr, "Maximum connection slots reached\n");
-                ipc_log_event("Connection attempt failed on %u port (too many connections)", base_port + i);
-                close(conn_fd);
-                continue;
-            }
-
-            pthread_t thread;
-            int rc = pthread_create(&thread, NULL, thread_conn_worker, slot);
-
-            if (rc != 0) {
-                /*
-                 * No worker was created, so release the socket and slot.
-                 * pthread_create returns an error number directly.
-                 */
-                close(conn_fd);
-
-                pthread_mutex_lock(&conn_mutex);
-                slot->fd = -1;
-                slot->adapter = NULL;
-                slot->rx_len = 0;
-                pthread_mutex_unlock(&conn_mutex);
-
-                fprintf(stderr, "pthread_create: %s\n", strerror(rc));
-                continue;
-            }
-
-            /* The worker releases its slot when the connection ends. */
-            rc = pthread_detach(thread);
-            if (rc != 0) {
-                fprintf(stderr, "pthread_detach: %s\n", strerror(rc));
-            }
-            LDB("Detach with worker thread and break");
-            break;
 
         }
     }
