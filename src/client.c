@@ -12,6 +12,7 @@
 #include "endecode_helper.h"
 #include "common.h"
 #include "sensor_config.h"
+#include "sensor_types.h"
 
 typedef struct
 {
@@ -21,10 +22,23 @@ typedef struct
     const char *ip_address;
     uint16_t port;
     uint32_t interval_ms;
-    bool is_glue; // 1 = glue, 0 = fragment
+    bool glue;
+    bool fragment;
     int corrupt;
 
 } sensor_node_cfg_t;
+
+typedef struct
+{
+    sensor_type_t type;
+    sensor_data_t *data;
+    size_t count;
+    ssize_t (*encode)(
+        uint8_t *buf,
+        size_t bufsize,
+        sensor_data_t *sensor);
+    bool periodic;
+} sensor_ctx_t;
 
 int sennode_parse_args(int argc, char **argv, sensor_node_cfg_t *cfg);
 void sennode_print_usage(const char *prog);
@@ -33,30 +47,86 @@ int sennode_tcp_close(int client_fd);
 void sleep_ms(int milliseconds);
 ssize_t sennode_tcp_send(int client_fd, uint8_t* buf, size_t len);
 ssize_t sennode_tcp_read(int client_fd, uint8_t* buf, size_t len);
+static int get_sensor_ctx( const sensor_node_cfg_t *cfg, sensor_ctx_t *ctx);
+static int send_fragment( int fd, sensor_ctx_t *ctx, sensor_node_cfg_t *cfg);
+static int send_glue( int fd, sensor_ctx_t *ctx);
+static int send_normal( int fd, sensor_ctx_t *ctx, sensor_node_cfg_t *cfg);
+void send_corrupt_data(int fd, const sensor_node_cfg_t *cfg);
 uint8_t tcpbuf[RX_BUF_SIZE] = {0};
+sensor_id_t sensor_id = 0;
 
-// sensor_data_t temp1_sample = { 10, SENSOR_TEMPERATURE, 21.5, 0 };
-// sensor_data_t temp2_sample = { 11, SENSOR_TEMPERATURE, 30.56, 0 };
-// sensor_data_t humid1_sample = { 21, SENSOR_HUMIDITY, 23.24, 0 };
-// sensor_data_t humid2_sample = { 22, SENSOR_HUMIDITY, 90.88, 0 };
-// sensor_data_t montion_sample = { 30, SENSOR_MOTION, 0, 0 };
-// sensor_data_t dooropen_sample = { 40, SENSOR_DOOR, 1, 0 };
-// sensor_data_t doorclose_sample = { 40, SENSOR_DOOR, 0, 0 };
-// sgp_data_t smokegas_sample = { 50, SENSOR_SMOKE_GAS, 100.0, 0 };
+static sensor_data_t temperature_sensor[] = {
+    {11, SENSOR_TEMPERATURE, -32.31, 0},
+    {11, SENSOR_TEMPERATURE, -23.91, 0},
+    {11, SENSOR_TEMPERATURE, -11.88, 0},
+    {11, SENSOR_TEMPERATURE, -5.83, 0},
+    {11, SENSOR_TEMPERATURE, 0.83, 0},
+    {11, SENSOR_TEMPERATURE, 3.88, 0},
+    {11, SENSOR_TEMPERATURE, 15.05, 0},
+    {11, SENSOR_TEMPERATURE, 23.57, 0},
+    {11, SENSOR_TEMPERATURE, 30.10, 0},
+    {11, SENSOR_TEMPERATURE, 41.50, 0},
+    {11, SENSOR_TEMPERATURE, TEMP_MIN_C, 0},
+    {11, SENSOR_TEMPERATURE, TEMP_MAX_C, 0},
+    {11, SENSOR_TEMPERATURE, -100.10, 0},
+    {11, SENSOR_TEMPERATURE, 101.22, 0},
+};
+static sensor_data_t humidity_sensor[] = {
+    {22, SENSOR_HUMIDITY, 15.05, 0},
+    {22, SENSOR_HUMIDITY, 95.87, 0},
+    {22, SENSOR_HUMIDITY, 50.22, 0},
+    {22, SENSOR_HUMIDITY, 28.87, 0},
+    {22, SENSOR_HUMIDITY, 24.71, 0},
+    {22, SENSOR_HUMIDITY, 32.08, 0},
+    {22, SENSOR_HUMIDITY, 28.80, 0},
+    {22, SENSOR_HUMIDITY, 74.52, 0},
+    {22, SENSOR_HUMIDITY, 68.10, 0},
+    {22, SENSOR_HUMIDITY, 80.42, 0},
+    {22, SENSOR_HUMIDITY, HUMIDITY_MIN, 0},
+    {22, SENSOR_HUMIDITY, HUMIDITY_MAX, 0},
+    {22, SENSOR_HUMIDITY, -1, 0},
+    {22, SENSOR_HUMIDITY, 101, 0},
+};
+static sensor_data_t smoke_sensor[] = {
+    {50, SENSOR_SMOKE_GAS, 50.28, 0},
+    {50, SENSOR_SMOKE_GAS, 693.32, 0},
+    {50, SENSOR_SMOKE_GAS, 135.85, 0},
+    {50, SENSOR_SMOKE_GAS, 400.12, 0},
+    {50, SENSOR_SMOKE_GAS, 539.20, 0},
+    {50, SENSOR_SMOKE_GAS, SMOKE_PPM_MIN, 0},
+    {50, SENSOR_SMOKE_GAS, SMOKE_PPM_MAX, 0},
+};
+static sensor_data_t motion_sensor[] = {
+    {30, SENSOR_MOTION, 0, 0},
+    {30, SENSOR_MOTION, 0, 0},
+    {30, SENSOR_MOTION, 0, 0},
+    {30, SENSOR_MOTION, 0, 0},
+    {30, SENSOR_MOTION, 0, 0},
 
-float temp10[] = {-11.88, -5.83, 0.83, 3.88, 10.23, 14.85, 12.88, 18.77, 19.87};
-float temp11[] = {22.88, 35.83, 4.63, 31.14, 19.40, 24.71, 32.08, 28.80, 29.82};
-float humid21[] = {95.87, 50.22, 28.87};
-float humid22[] = {10.11, 70.18, 63.42};
+};
 
+static sensor_data_t door_sensor[] = {
+    {40, SENSOR_DOOR, DOOR_OPEN, 0},
+    {40, SENSOR_DOOR, DOOR_CLOSE, 0},
+    {40, SENSOR_DOOR, DOOR_OPEN, 0},
+    {40, SENSOR_DOOR, 2, 0},
+    {40, SENSOR_DOOR, -1, 0},
+};
+
+double random_range(double min, double max)
+{
+    /* rand() is adequate for deterministic test data, not security use. */
+    return min + ((double)rand() / (double)RAND_MAX) * (max - min);
+}
 int client_fd = 0;
 
 int main(int argc, char **argv)
 {
     sensor_node_cfg_t cfg;
+    sensor_ctx_t ctx;
+    srand((unsigned int)time(NULL));
 
-    if (sennode_parse_args(argc, argv, &cfg) != 0)
-    {
+    if (sennode_parse_args(argc, argv, &cfg) != 0) {
         sennode_print_usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -66,81 +136,34 @@ int main(int argc, char **argv)
     printf("ip_address  : %s\n", cfg.ip_address);
     printf("port        : %u\n", cfg.port);
     printf("interval_ms : %u\n", cfg.interval_ms);
-    printf("is glue     : %s\n",
-           cfg.is_glue ? "yes" : "no");
+    printf("glue        : %s\n", cfg.glue ? "yes" : "no");
+    printf("fragment    : %s\n", cfg.fragment ? "yes" : "no");
 
     printf("corrupt     : %s\n",
            cfg.corrupt ? "yes" : "no");
     client_fd = sennode_tcp_open(cfg.ip_address, cfg.port);
-    time_t ts;
-    ssize_t len = 0;
-    time(&ts);
 
-    if(strcmp(cfg.sensor_type, "temperature") == 0)
+    if(get_sensor_ctx(&cfg, &ctx) != 0)
     {
-        len = encode_tbp(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, temp10[0], ts);
-        if(len == -1){
-            printf("Error: framesize smaller than expected\n");
-            return -1;
-        }
-    }
-    else if ((strcmp(cfg.sensor_type, "humidity") == 0)) {
-        len = encode_hlp(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, humid21[0], ts);
-        if(len == -1){
-            printf("Error: framesize smaller than expected\n");
-            return -1;
-        }
-        tcpbuf[len] = '\0';
-        printf("%s", tcpbuf);
-
-    }
-    else if ((strcmp(cfg.sensor_type, "motion") == 0)) {
-        len = encode_motion_tlv(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, ts);
-        if(len == -1){
-            printf("Error: framesize smaller than expected\n");
-            return -1;
-        }
-    }
-    else if ((strcmp(cfg.sensor_type, "door") == 0)) {
-        len = encode_door_tlv(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, DOOR_OPEN, ts);
-        if(len == -1){
-            printf("Error: framesize smaller than expected\n");
-            return -1;
-        }
-
-    }
-    else if ((strcmp(cfg.sensor_type, "smoke_gas") == 0)) {
-        len = encode_sgp(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, 100.0, ts);
-        if(len == -1){
-            printf("Error: framesize smaller than expected\n");
-            return -1;
-        }
-
-    }
-    else {
-        printf("Error: Not found sensor type\n");
-    }
-
-    len = sennode_tcp_send(client_fd, tcpbuf, len);
-    if(len == -1){
-        printf("Error: Fail to send via TCP\n");
+        printf("Unsupported sensor\n");
         return -1;
     }
 
-    // for(unsigned long i = 0; i < sizeof(temp10)/sizeof(temp10[0]); i++) {
-    //     printf("Send %.2f\n", temp10[i]);
-    //     ssize_t len = encode_tbp(tcpbuf, sizeof(tcpbuf), cfg.sensor_id, temp10[i], ts);
-    //     if(len == -1){
-    //         printf("Error: framesize smaller than expected\n");
-    //         return -1;
-    //     }
-    //     len = sennode_tcp_send(client_fd, tcpbuf, len);
-    //     if(len == -1){
-    //         printf("Error: Fail to send via TCP\n");
-    //         return -1;
-    //     }
-    //     sleep_ms(cfg.interval_ms);
-    // }
+    if(cfg.glue) {
+        printf("Send glue\n");
+        send_glue(client_fd, &ctx);
+    }
+    else if(cfg.fragment) {
+        printf("Send fraqment\n");
+        send_fragment(client_fd, &ctx, &cfg);
+    }
+    else if (cfg.corrupt) {
+        send_corrupt_data(client_fd, &cfg);
+    }
+    else {
+        printf("Send normal\n");
+        send_normal(client_fd, &ctx, &cfg);
+    }
 
     // for(int i = 0; i < len; i++) {
     //     printf("0x%x ", tcpbuf[i]);
@@ -231,11 +254,11 @@ int sennode_parse_args(int argc,
         switch (opt)
         {
             case 'f':
-                cfg->is_glue = 0;
+                cfg->fragment = 1;
                 break;
 
             case 'g':
-                cfg->is_glue = 1;
+                cfg->glue = 1;
                 break;
 
             case 'c':
@@ -279,3 +302,233 @@ void sleep_ms(int milliseconds)
     while (nanosleep(&ts, &ts) == -1);
 }
 
+static int send_normal(
+    int fd,
+    sensor_ctx_t *ctx,
+    sensor_node_cfg_t *cfg)
+{
+    uint8_t frame[128];
+
+    for(size_t i = 0; i < ctx->count; i++)
+    {
+        time(&ctx->data[i].ts);
+
+        ssize_t len =
+            ctx->encode(
+                frame,
+                sizeof(frame),
+                &ctx->data[i]);
+
+        if(len < 0)
+            return -1;
+
+        send(fd, frame, len, 0);
+
+        if(ctx->periodic)
+        {
+            sleep_ms(cfg->interval_ms);
+        }
+        else {
+            uint16_t sleep_random = (rand() % 10);
+            sleep_random = sleep_random == 0 ? 1 : sleep_random; // Avoid sleep_random = 0
+            printf("sleep_random:%u second\n", sleep_random);
+            sleep_ms(sleep_random * 1000);
+        }
+    }
+
+    return 0;
+}
+static int send_glue(
+    int fd,
+    sensor_ctx_t *ctx)
+{
+    uint8_t tcpbuf[RX_BUF_SIZE];
+
+    size_t total_len = 0;
+
+    for(size_t i = 0; i < ctx->count; i++)
+    {
+        time(&ctx->data[i].ts);
+
+        ssize_t len =
+            ctx->encode(
+                tcpbuf + total_len,
+                sizeof(tcpbuf) - total_len,
+                &ctx->data[i]);
+
+        if(len < 0)
+            return -1;
+
+        total_len += len;
+    }
+
+    send(fd, tcpbuf, total_len, 0);
+
+    return 0;
+}
+static int send_fragment(
+    int fd,
+    sensor_ctx_t *ctx,
+    sensor_node_cfg_t *cfg)
+{
+    uint8_t frame[128];
+
+    for(size_t i = 0; i < ctx->count; i++)
+    {
+        time(&ctx->data[i].ts);
+
+        ssize_t len =
+            ctx->encode(
+                frame,
+                sizeof(frame),
+                &ctx->data[i]);
+
+        if(len < 0)
+            return -1;
+
+        size_t offset = 0;
+
+        while(offset < (size_t)len)
+        {
+            size_t chunk = 5;
+
+            if(chunk > len - offset)
+            {
+                chunk = len - offset;
+            }
+
+            send(
+                fd,
+                frame + offset,
+                chunk,
+                0);
+
+            offset += chunk;
+
+            sleep_ms(cfg->interval_ms);
+        }
+    }
+
+    return 0;
+}
+
+static ssize_t encode_temperature( uint8_t *buf, size_t size, sensor_data_t *sensor)
+{
+    return encode_tbp( buf, size, sensor->id, sensor->value, sensor->ts);
+}
+
+static ssize_t encode_humidity( uint8_t *buf, size_t size, sensor_data_t *sensor)
+{
+    return encode_hlp( buf, size, sensor->id, sensor->value, sensor->ts);
+}
+
+static ssize_t encode_motion( uint8_t *buf, size_t size, sensor_data_t *sensor)
+{
+    return encode_motion_tlv( buf, size, sensor->id, sensor->ts);
+}
+
+static ssize_t encode_door( uint8_t *buf, size_t size, sensor_data_t *sensor)
+{
+    return encode_door_tlv( buf, size, sensor->id, (uint8_t)sensor->value, sensor->ts);
+}
+
+static ssize_t encode_smoke( uint8_t *buf, size_t size, sensor_data_t *sensor)
+{
+    return encode_sgp( buf, size, sensor->id, sensor->value, sensor->ts);
+}
+
+static int get_sensor_ctx(
+    const sensor_node_cfg_t *cfg,
+    sensor_ctx_t *ctx)
+{
+    memset(ctx, 0, sizeof(*ctx));
+    typedef struct {
+        sensor_ctx_t ctx;
+        const char *sensor_type;
+    } st_ctx_type_t;
+    st_ctx_type_t ctxtype[] = {
+        {
+            {SENSOR_TEMPERATURE, temperature_sensor, TOTAL_ITEMS(temperature_sensor), encode_temperature, true},
+            "temperature"
+        },
+        {
+            {SENSOR_HUMIDITY, humidity_sensor, TOTAL_ITEMS(humidity_sensor), encode_humidity, true}, 
+            "humidity"
+        },
+        {
+            {SENSOR_MOTION, motion_sensor, TOTAL_ITEMS(motion_sensor), encode_motion, false},
+            "motion"
+        },
+        {
+            {SENSOR_DOOR, door_sensor, TOTAL_ITEMS(door_sensor), encode_door, false},
+            "door"
+        },
+        {
+            {SENSOR_SMOKE_GAS, smoke_sensor, TOTAL_ITEMS(smoke_sensor), encode_smoke, false},
+            "smoke_gas"
+        }
+    };
+    for (unsigned long i = 0; i < TOTAL_ITEMS(ctxtype); i++) {
+        if(strcmp(cfg->sensor_type, ctxtype[i].sensor_type) == 0) {
+            *ctx = ctxtype[i].ctx;
+            printf("Sensor type:%s, items:%lu\n", ctxtype[i].sensor_type, ctx->count);
+            for(unsigned long i = 0; i < ctx->count; i++) {
+                ctx->data[i].id = cfg->sensor_id;
+            }
+            ctx->data[2].id = 1000; // Mix an unavailable ID
+            return 0;
+        }
+    }
+    return -1;
+
+}
+
+
+void send_corrupt_data(int fd, const sensor_node_cfg_t *cfg)
+{
+    ssize_t len;
+    if (strcmp(cfg->sensor_type, "humidity") == 0) {
+        len = encode_humidity(tcpbuf, sizeof(tcpbuf), &humidity_sensor[0]);
+        memcpy(tcpbuf, "abc", sizeof("abc")); // corrupt HUM character
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+        len = encode_humidity(tcpbuf, sizeof(tcpbuf), &humidity_sensor[1]);
+        tcpbuf[len - 1] = 'Z'; // Remove \n
+        const char *dummy_text = "This is dummy text that make humidity protocol is oversize of 64 bytes data";
+        size_t dummy_text_len = strlen(dummy_text);
+        memcpy(tcpbuf + len, dummy_text, dummy_text_len); // Oversize HLP
+        send(fd, tcpbuf, len + dummy_text_len, 0);
+        sleep_ms(1000);
+    }
+    else if (strcmp(cfg->sensor_type,"motion") == 0) {
+        len = encode_motion(tcpbuf, sizeof(tcpbuf), &motion_sensor[0]);
+        tcpbuf[0] = 0x03; // Malform first frame
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+        len = encode_motion(tcpbuf, sizeof(tcpbuf), &motion_sensor[1]);
+        tcpbuf[1] = 0x05; // Bad length 
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+    }
+    else if (strcmp(cfg->sensor_type, "door") == 0) {
+        len = encode_door(tcpbuf, sizeof(tcpbuf), &door_sensor[0]);
+        tcpbuf[0] = 0x03; // Malform first frame
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+        len = encode_door(tcpbuf, sizeof(tcpbuf), &door_sensor[1]);
+        tcpbuf[1] = 0x05; // Bad length 
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+    }
+    else if (strcmp(cfg->sensor_type,"smoke_gas") == 0) {
+        len = encode_smoke(tcpbuf, sizeof(tcpbuf), &smoke_sensor[0]);
+        tcpbuf[0] = 0x12; // Bad magic
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+        len = encode_smoke(tcpbuf, sizeof(tcpbuf), &smoke_sensor[1]);
+        tcpbuf[len - 1] = 0x00; // Bad CRC
+        send(fd, tcpbuf, len, 0);
+        sleep_ms(1000);
+    }
+
+}
