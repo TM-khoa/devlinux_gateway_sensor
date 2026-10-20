@@ -34,9 +34,9 @@ int g_connmgr_stoppipefd[2];
 
 void* thread_connmgr(void* arg) {
     (void)arg;
-    printf("%s created\n", __func__);
+    LDB("%s created", __func__);
     if (pipe(g_connmgr_stoppipefd) == -1) {
-        printf("Error: fail to create pipe g_connmgr_stoppipefd\n");
+        fprintf(stderr, "Error: fail to create pipe g_connmgr_stoppipefd\n");
     }
     fcntl(g_connmgr_stoppipefd[0], F_SETFL, O_NONBLOCK);
     fcntl(g_connmgr_stoppipefd[1], F_SETFL, O_NONBLOCK);
@@ -58,11 +58,15 @@ void* thread_connmgr(void* arg) {
 
 void* thread_datamgr(void* arg) {
     (void)arg;
-    printf("%s created\n", __func__);
+    sensor_data_t sensor;
     ipc_log_event("DATA Created");
-    datamgr_start(&gw.data, &gw.sbuf);
+    datamgr_start(&gw.data, &gw.sbuf, SENSOR_CONFIG_PATH);
     while(1) {
-        datamgr_read();
+        int rc = sbuffer_read(&gw.sbuf, &sensor, READER_DATA);
+        if(rc != 0) {
+            (void)fprintf(stderr, "[DATA] Fail to read from sbuffer\n");
+        }
+        datamgr_process_data(&sensor);
         pthread_mutex_lock(&g_sigmutex);
         if(gw.stop == 1) {
             LDB("DATA get signal");
@@ -78,7 +82,6 @@ void* thread_datamgr(void* arg) {
 
 void* thread_storagemgr(void* arg) {
     (void)arg;
-    printf("%s created\n", __func__);
     ipc_log_event("STOR Created");
     if (stormgr_start(&gw.stor, DATABASE_NAME, &gw.sbuf) != 0) {
         LDB("Error: Fail to start storage manager");
@@ -166,7 +169,7 @@ int server_bringup(int fd) {
     pthread_mutex_init(&g_sigmutex, NULL);
     sbuffer_init(&gw.sbuf);
 
-    printf("Gateway started...\n");
+    LDB("Gateway started...");
     ipc_log_event("MAIN Gateway started...");
     for(int i = 0; i < THREAD_NUM; i++) {
         if (pthread_create(thread_list[i], NULL, pthreadfunc_list[i], (void*)&fd) != 0) {
@@ -198,7 +201,7 @@ int server_bringup(int fd) {
 
 
     ipc_log_event("MAIN Gateway is shutting down (receive signal handler)");
-    printf("Gateway is shutting down\n");
+    LDB("Gateway is shutting down");
     sleep(1); // Wait for child process to complete write log
     return 0;
 
@@ -207,8 +210,8 @@ int server_bringup(int fd) {
 int main(int argc, char **argv) {
 
     if(argc != 3) {
-        fprintf(stderr, "Must provide exactly two arguments for sensor base port and http port");
-        return -1;
+        fprintf(stderr, "\nError: Must provide exactly two arguments for sensor base port and http port");
+        exit(1);
     }
     gw.base_port = atoi(argv[1]);
     gw.http_port = atoi(argv[2]);
@@ -228,7 +231,7 @@ int main(int argc, char **argv) {
         while(1) {
             ssize_t n = read(fd, buf, sizeof(buf) - 1);
             if(n == 0) {
-                printf("Logprocess: EOF, close fd now\n");
+                LDB("Logprocess: EOF, close fd now\n");
                 break;
             }
             /* IMPORTANT: strtok need NULL character to not cross over read buffer */
