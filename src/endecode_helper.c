@@ -1,4 +1,7 @@
 #include "endecode_helper.h"
+#include "logger.h"
+#include "sensor_types.h"
+#include <stdio.h>
 
 
 static void write_le16(uint8_t *buf, uint16_t value);
@@ -42,8 +45,7 @@ parse_result_t parse_tbp(
         return PARSE_ERROR;
     if (len < TBP_FRAME_SIZE)
     { 
-        if(consumed != NULL)
-            *consumed = 0;
+        *consumed = 0;
         return PARSE_NEED_MORE;
     }
 
@@ -65,8 +67,7 @@ parse_result_t parse_tbp(
     out->value = cvt.d;
     out->ts= (time_t)ts;
 
-    if(consumed != NULL)
-        *consumed = TBP_FRAME_SIZE;
+    *consumed = TBP_FRAME_SIZE;
 
     return PARSE_OK;
 }
@@ -110,6 +111,8 @@ parse_result_t parse_hlp(
         if (len >= HLP_FRAME_SIZE)
         {
             *consumed = 0;
+            ipc_log_event("Received malformed frame on HLP port (bad length)");
+            fprintf(stderr, "Error: HLP bad length:%lu\n", len);
             return PARSE_ERROR;
         }
 
@@ -133,6 +136,8 @@ parse_result_t parse_hlp(
     if (rc != 3)
     {
         *consumed = line_len;
+        ipc_log_event("Received malformed frame on HLP port (malformed first frame)");
+        fprintf(stderr, "Error: HLP malformed first frame\n");
         return PARSE_ERROR;
     }
 
@@ -213,6 +218,8 @@ parse_result_t parse_evp(
         if (payload_len != 6)
         {
             *consumed = frame_len;
+            ipc_log_event("Received malformed frame on EVP port (bad length)");
+            fprintf(stderr, "Error: EVP bad length:%u\n", payload_len);
             return PARSE_ERROR;
         }
 
@@ -230,6 +237,8 @@ parse_result_t parse_evp(
         if (payload_len != 7)
         {
             *consumed = frame_len;
+            ipc_log_event("Received malformed frame on EVP port (bad length)");
+            fprintf(stderr, "Error: EVP bad length:%u\n", payload_len);
             return PARSE_ERROR;
         }
 
@@ -244,6 +253,8 @@ parse_result_t parse_evp(
 
     default:
         *consumed = frame_len;
+        ipc_log_event("Received malformed frame on EVP port (malformed first frame)");
+        fprintf(stderr, "Error: EVP malformed first frame\n");
         return PARSE_ERROR;
     }
 }
@@ -271,40 +282,6 @@ ssize_t encode_sgp(
     return SGP_FRAME_SIZE;
 }
 
-int sgp_decode(
-    const uint8_t *buf,
-    size_t length,
-    sgp_data_t *out)
-{
-    if (length != SGP_FRAME_SIZE)
-    {
-        return -1;
-    }
-
-    if (buf[0] != SGP_MAGIC)
-    {
-        return -1;
-    }
-
-    uint16_t rx_crc =
-        read_be16(&buf[9]);
-
-    uint16_t calc_crc =
-        crc16_ccitt_false(&buf[1], 8);
-
-    if (rx_crc != calc_crc)
-    {
-        return -2;
-    }
-
-    out->id  = read_be16(&buf[1]);
-    out->ppm = read_be16(&buf[3]);
-    out->ts  = read_be32(&buf[5]);
-
-    return 0;
-}
-
-
 parse_result_t parse_sgp(
     const uint8_t *buf,
     size_t len,
@@ -322,6 +299,8 @@ parse_result_t parse_sgp(
     if (buf[0] != SGP_MAGIC)
     {
         *consumed = 1;
+        ipc_log_event("Received malformed frame on SGP port (bad magic)");
+        fprintf(stderr, "Error: SGP bad magic:%u, expect:%d\n", buf[0], SGP_MAGIC);
         return PARSE_ERROR;
     }
 
@@ -334,6 +313,8 @@ parse_result_t parse_sgp(
     if (rx_crc != calc_crc)
     {
         *consumed = SGP_FRAME_SIZE;
+        ipc_log_event("Received malformed frame on SGP port (bad CRC)");
+        fprintf(stderr, "Error: SGP bad CRC:%u, expect:%d\n", rx_crc, calc_crc);
         return PARSE_ERROR;
     }
 
