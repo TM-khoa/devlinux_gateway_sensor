@@ -9,9 +9,9 @@ LIB_PATH=./lib
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
 
-AR_RAW_NAME+=connection_manager
-AR_RAW_NAME+=endecode_helper
 AR_RAW_NAME+=logger
+AR_RAW_NAME+=endecode_helper
+AR_RAW_NAME+=connection_manager
 AR_RAW_NAME+=share_buffer
 AR_RAW_NAME+=storage_manager
 AR_RAW_NAME+=data_manager
@@ -23,16 +23,13 @@ AR_LINKER_PATH+=-L$(LIB_PATH)
 all: gateway client
 
 include log_option.mk
+include ./test/test_options.mk
 
 gw:
 	$(BIN_PATH)/gateway 1234 8080
 
 cl:
-	$(BIN_PATH)/client temperature 10 127.0.0.1 1234 1000
-	#$(BIN_PATH)/client humidity 21 127.0.0.1 1235 1000
-	#$(BIN_PATH)/client motion 30 127.0.0.1 1236 1000
-	#$(BIN_PATH)/client door 40 127.0.0.1 1236 1000
-	#$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 1000
+	$(BIN_PATH)/client temperature 11 127.0.0.1 1234 500
 
 bin:
 	mkdir -p $(BIN_PATH)
