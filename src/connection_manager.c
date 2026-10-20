@@ -134,9 +134,9 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
             conn->sensor_id = sensor.id;
             LDB("Sensor ID:%u, type:%s, value:%.2f, Timestamp:%ld", 
                     sensor.id, sensor_type_to_str(sensor.type), sensor.value, sensor.ts);
-            // if(sbuffer_insert(p_sbuf, &sensor) != 0){
-            //     fprintf(stderr,"Fail to insert share buffer\n");
-            // }
+            if(sbuffer_insert(p_sbuf, &sensor) != 0){
+                fprintf(stderr,"Fail to insert share buffer\n");
+            }
         }
         else if (PARSE_NEED_MORE == err) {
             LDB("PARSE_NEED_MORE");
