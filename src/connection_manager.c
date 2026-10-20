@@ -12,7 +12,6 @@
 #include "connection_manager.h"
 #include "endecode_helper.h"
 #include "logger.h"
-#include "gateway.h"
 
 #ifdef LOG_CONNMGR
 static const char *TAG = "CONN";
@@ -105,7 +104,6 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
     size_t rxlen = conn->rx_len;
     size_t total_consumed = 0;
 
-
     /* Append the uncompleted frame if any */
     memcpy(rxbuf + rxlen, recvbuf, len);
     rxlen += len;
@@ -113,10 +111,10 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
         parse_result_t err = conn->adapter->parse(rxbuf + total_consumed, rxlen, &sensor, &consumed);
         if(PARSE_ERROR == err) {
             fprintf(stderr,"PARSE_ERROR: Frame error\n");
-            rxlen -= consumed;
-            total_consumed += consumed;
             /* Move remaining bytes to the beginning of buffer */
-            memcpy(rxbuf, rxbuf + total_consumed, rxlen);
+            memset(rxbuf + rxlen, 0, len); // Cleanup malformed frame
+            rxlen -= len; // Revert back to previous
+            break;
         }
         else if (PARSE_OK == err) {
             if(rxlen < consumed)
@@ -128,6 +126,9 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
             LDB("PARSE_OK, total_consumed:%lu, consumed:%lu, rxlen:%lu", total_consumed, consumed, rxlen);
             if(conn->identified == false) { ipc_log_event("A sensor node with %u has opened a new connection", sensor.id);
                 conn->identified = true;
+            }
+            if(conn->sensor_id != sensor.id) {
+                LDB("Error: Sensor ID %u mismatch with previous packet has ID %u", sensor.id, conn->sensor_id);
             }
             conn->sensor_id = sensor.id;
             LDB("Sensor ID:%u, type:%s, value:%.2f, Timestamp:%ld", 
@@ -168,7 +169,10 @@ static void *thread_conn_worker(void *arg)
         if (n == 0) {
             /* Client performed an orderly TCP shutdown. */
             LDB("Worker: Client disconnect");
-            ipc_log_event("A sensor node with %u has closed the connection", conn->sensor_id);
+            if(conn->identified) {
+                ipc_log_event("A sensor node with %u has closed the connection", conn->sensor_id);
+                conn->identified = false;
+            }
             break;
         }
 
@@ -212,7 +216,7 @@ void conn_accept_and_dispatch()
         }
 
         /* Block until one of the ports receives an incoming connection */
-        LDB("select Blocking");
+        LDB("Waiting at select()");
         select(max_fd + 1, &read_fds, NULL, NULL, NULL);
         if(stop_handle_conn == true)
             break;
@@ -308,8 +312,6 @@ void conn_accept_and_dispatch()
                 if (rc != 0) {
                     fprintf(stderr, "pthread_detach: %s\n", strerror(rc));
                 }
-                LDB("Detach with worker thread and break");
-                break;
             }
 
         }
