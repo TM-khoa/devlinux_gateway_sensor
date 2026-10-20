@@ -342,7 +342,7 @@ static int send_glue(
     int fd,
     sensor_ctx_t *ctx)
 {
-    uint8_t tcpbuf[RX_BUF_SIZE];
+    uint8_t tcpbuf[RX_BUF_SIZE * 2];
 
     size_t total_len = 0;
 
