@@ -14,6 +14,7 @@
 
 
 #define DATABASE_NAME "gateway.db"
+#define SENSOR_CONFIG_PATH "room_sensor.txt"
 /* ---- Shared status (shared memory) ---- */
 typedef struct {
     sensor_id_t id; uint16_t room; sensor_type_t type;

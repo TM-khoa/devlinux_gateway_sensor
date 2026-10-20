@@ -19,7 +19,8 @@ typedef struct {
 typedef struct { datamgr_sensor_t sensors[MAX_SENSORS]; size_t n; } datamgr_t;
 typedef void (*sensor_handler_t)(datamgr_t *, datamgr_sensor_t *, const sensor_data_t *);
 
-int datamgr_start(datamgr_t *datmgr, sbuffer_t *sbuf);
-void datamgr_read();
+int datamgr_start(datamgr_t *datamgr, sbuffer_t *sbuf, const char *config_path);
+int datamgr_process_data(const sensor_data_t *data);
+int datamgr_stop(void);
 
 #endif // _DATA_MGR_H
