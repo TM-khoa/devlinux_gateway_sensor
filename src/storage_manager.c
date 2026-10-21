@@ -120,7 +120,7 @@ int stormgr_start(storagemgr_t *stormgr,
         sbuffer_t *sbuf)
 {
     if(stormgr == NULL || sbuf == NULL || db_path == NULL) {
-        ldebug(TAG ,"stormgr or sbuf or db_path is NULL");
+        LDB("stormgr or sbuf or db_path is NULL");
         return -1;
     }
     p_stormgr = stormgr;

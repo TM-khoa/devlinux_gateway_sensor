@@ -190,6 +190,7 @@ static datamgr_sensor_t *find_configured_sensor(datamgr_t *datamgr,
         datamgr_sensor_t *sensor = &datamgr->sensors[i];
         if (sensor->info.id == data->id) {
             if (sensor->info.type != data->type) {
+                LDB("Invalid sensor node ID %u", (unsigned)data->id);
                 ipc_log_event("DATA Received sensor data with invalid sensor node ID %u",
                           (unsigned)data->id);
                 return NULL;
@@ -198,6 +199,7 @@ static datamgr_sensor_t *find_configured_sensor(datamgr_t *datamgr,
         }
     }
 
+    LDB("Invalid sensor node ID %u", (unsigned)data->id);
     ipc_log_event("DATA Received sensor data with invalid type sensor node ID %u",
               (unsigned)data->id);
     return NULL;
