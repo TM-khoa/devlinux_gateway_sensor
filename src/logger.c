@@ -122,3 +122,13 @@ void ipc_log_start(int *logpipefifo_fd)
     g_p_logpipefifo_fd = logpipefifo_fd;
 }
 
+void dbg_buf(const char* bufname,
+    uint8_t *buf,
+    size_t bufsize)
+{
+    printf("buffer name:%s\n", bufname);
+    for(unsigned long i = 0; i < bufsize; i++) {
+        printf("0x%x ", buf[i]);
+    }
+    printf("\n");
+}
