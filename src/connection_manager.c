@@ -29,10 +29,6 @@ static int max_fd = 0;
 static bool stop_handle_conn = 0;
 static uint16_t base_port;
 extern int g_connmgr_stoppipefd[2];
-#include <pthread.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/socket.h>
 
 static pthread_mutex_t conn_mutex = PTHREAD_MUTEX_INITIALIZER;
 static const protocol_adapter_t atbp = {"TBP", 0, parse_tbp, NULL};
@@ -40,6 +36,55 @@ static const protocol_adapter_t ahlp = {"HLP", 1, parse_hlp, NULL};
 static const protocol_adapter_t aevp = {"EVP", 2, parse_evp, NULL};
 static const protocol_adapter_t asgp = {"SGP", 3, parse_sgp, 
     .build_reply = sgp_reply, };
+
+typedef struct
+{
+    uint8_t frame[32];
+    size_t len;
+    int valid;
+} frame_cache_t;
+
+static frame_cache_t g_last_sgp;
+
+static int is_duplicate_sgp( const uint8_t *buf, size_t len)
+{
+    if (g_last_sgp.valid == 0)
+        return 0;
+
+    if (g_last_sgp.len != len)
+        return 0;
+
+    return memcmp( g_last_sgp.frame, buf, len) == 0;
+}
+
+
+size_t sgp_reply( parse_result_t result, uint8_t *reply, size_t cap)
+{
+    if (reply == NULL || cap < 1)
+        return 0;
+
+    switch (result)
+    {
+    case PARSE_OK:
+        reply[0] = SGP_ACK;
+        return 1;
+
+    case PARSE_ERROR:
+        reply[0] = SGP_NAK;
+        return 1;
+
+    default:
+        return 0;
+    }
+}
+
+static void save_reply_frame(frame_cache_t cache, const uint8_t *buf, size_t len)
+{
+    memcpy(cache.frame, buf, len);
+
+    cache.len = len;
+    cache.valid = 1;
+}
 
 static void reset_connection()
 {
@@ -103,12 +148,18 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
     uint8_t *rxbuf = conn->rx;
     size_t rxlen = conn->rx_len;
     size_t total_consumed = 0;
+    parse_result_t err = 0;
 
+    /* To check duplicate SGP message */
+    if(conn->adapter->build_reply != NULL && is_duplicate_sgp(recvbuf, len)) {
+        LDB("Duplicate message");
+        return 0;
+    }
     /* Append the uncompleted frame if any */
     memcpy(rxbuf + rxlen, recvbuf, len);
     rxlen += len;
     while (rxlen > 0) {
-        parse_result_t err = conn->adapter->parse(rxbuf + total_consumed, rxlen, &sensor, &consumed);
+        err = conn->adapter->parse(rxbuf + total_consumed, rxlen, &sensor, &consumed);
         if(PARSE_ERROR == err) {
             fprintf(stderr,"PARSE_ERROR: Frame error\n");
             /* Move remaining bytes to the beginning of buffer */
@@ -146,6 +197,15 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
         }
     };
     LDB("---------------------------------------------------------");
+    if(conn->adapter->build_reply != NULL) {
+        save_reply_frame(g_last_sgp, recvbuf, len);
+        uint8_t reply[2] = {0};
+        size_t rlen = conn->adapter->build_reply(err, reply, sizeof(reply));
+        if(rlen > 0) {
+            LDB("Reply with code 0x%x", reply[0]);
+            send(conn->fd, reply, rlen, 0);
+        }
+    }
     conn->rx_len = rxlen;
     return 0;
 }
