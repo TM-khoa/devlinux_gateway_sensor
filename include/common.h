@@ -14,6 +14,8 @@
 #define SGP_MAX_RETRY  3
 #define SGP_ACK_TIMEOUT_SEC 1
 
+#define SGP_CACHE_LEN 180
+
 #define TOTAL_ITEMS(_ARRAY_) (sizeof(_ARRAY_)/sizeof(_ARRAY_[0]))
 typedef enum { STATE_COLLECTING, STATE_NORMAL, STATE_ALERT } sensor_state_t;
 typedef enum { SQL_CONNECTED, SQL_LOST, SQL_DOWN } sql_state_t;

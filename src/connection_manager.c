@@ -69,6 +69,10 @@ size_t sgp_reply( parse_result_t result, uint8_t *reply, size_t cap)
         reply[0] = SGP_ACK;
         return 1;
 
+    case PARSE_NEED_MORE:
+        reply[0] = SGP_ACK;
+        return 1;
+
     case PARSE_ERROR:
         reply[0] = SGP_NAK;
         return 1;
