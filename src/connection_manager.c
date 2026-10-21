@@ -39,22 +39,21 @@ static const protocol_adapter_t asgp = {"SGP", 3, parse_sgp,
 
 typedef struct
 {
-    uint8_t frame[32];
+    uint8_t frame[SGP_CACHE_LEN];
     size_t len;
     int valid;
 } frame_cache_t;
 
-static frame_cache_t g_last_sgp;
 
-static int is_duplicate_sgp( const uint8_t *buf, size_t len)
+static int is_duplicate_sgp(frame_cache_t *fcache, const uint8_t *buf, size_t len)
 {
-    if (g_last_sgp.valid == 0)
+    if (fcache->valid == 0)
         return 0;
 
-    if (g_last_sgp.len != len)
+    if (fcache->len != len)
         return 0;
 
-    return memcmp( g_last_sgp.frame, buf, len) == 0;
+    return memcmp(fcache->frame, buf, len) == 0;
 }
 
 
@@ -82,12 +81,12 @@ size_t sgp_reply( parse_result_t result, uint8_t *reply, size_t cap)
     }
 }
 
-static void save_reply_frame(frame_cache_t cache, const uint8_t *buf, size_t len)
+static void save_reply_frame(frame_cache_t *p_fcache, const uint8_t *buf, size_t len)
 {
-    memcpy(cache.frame, buf, len);
+    memcpy(p_fcache->frame, buf, len);
 
-    cache.len = len;
-    cache.valid = 1;
+    p_fcache->len = len;
+    p_fcache->valid = 1;
 }
 
 static void reset_connection()
@@ -145,7 +144,7 @@ static connection_t *claim_connection_slot(
 
 }
 
-int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
+int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len, frame_cache_t *p_fcache)
 {
     sensor_data_t sensor;
     size_t consumed = 0;
@@ -155,7 +154,7 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
     parse_result_t err = 0;
 
     /* To check duplicate SGP message */
-    if(conn->adapter->build_reply != NULL && is_duplicate_sgp(recvbuf, len)) {
+    if(conn->adapter->build_reply != NULL && is_duplicate_sgp(p_fcache ,recvbuf, len)) {
         LDB("Duplicate message");
         return 0;
     }
@@ -179,12 +178,12 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
                 total_consumed += consumed;
             }
             LDB("PARSE_OK, total_consumed:%lu, consumed:%lu, rxlen:%lu", total_consumed, consumed, rxlen);
+            if(conn->sensor_id != sensor.id && conn->identified) {
+                LDB("Error: Sensor ID %u mismatch with previous packet has ID %u", sensor.id, conn->sensor_id);
+            }
             if(conn->identified == false) { 
                 ipc_log_event("CONN A sensor node with %u has opened a new connection", sensor.id);
                 conn->identified = true;
-            }
-            if(conn->sensor_id != sensor.id) {
-                LDB("Error: Sensor ID %u mismatch with previous packet has ID %u", sensor.id, conn->sensor_id);
             }
             conn->sensor_id = sensor.id;
             LDB("Sensor ID:%u, type:%s, value:%.2f, Timestamp:%ld", 
@@ -202,7 +201,7 @@ int process_received_data(connection_t *conn, uint8_t *recvbuf, size_t len)
     };
     LDB("---------------------------------------------------------");
     if(conn->adapter->build_reply != NULL) {
-        save_reply_frame(g_last_sgp, recvbuf, len);
+        save_reply_frame(p_fcache, recvbuf, len);
         uint8_t reply[2] = {0};
         size_t rlen = conn->adapter->build_reply(err, reply, sizeof(reply));
         if(rlen > 0) {
@@ -221,13 +220,21 @@ static void *thread_conn_worker(void *arg)
     const int fd = conn->fd;
     uint8_t recvbuf[100] = {0};
     LDB("Worker: Created");
+    frame_cache_t *p_cache = NULL;
+    if(conn->adapter->build_reply != NULL) {
+        LDB("Allocate reply frame cache");
+        p_cache = (frame_cache_t *)malloc(sizeof(frame_cache_t));
+    }
+    if(p_cache == NULL) {
+        fprintf(stderr, "Cannot allocate reply frame cache\n");
+    }
 
     for (;;) {
         ssize_t n = recv(fd, recvbuf, sizeof(recvbuf), 0);
 
         if (n > 0) {
             LDB("Worker: Receive %lu", n);
-            process_received_data(conn, recvbuf, n);
+            process_received_data(conn, recvbuf, n, p_cache);
             continue;
         }
 
@@ -252,6 +259,8 @@ static void *thread_conn_worker(void *arg)
     }
 
     close(fd);
+    LDB("Free cache");
+    free(p_cache);
 
     /*
      * Mark the slot free only after this worker has finished
