@@ -48,11 +48,32 @@ void sleep_ms(int milliseconds);
 ssize_t sennode_tcp_send(int client_fd, uint8_t* buf, size_t len);
 ssize_t sennode_tcp_read(int client_fd, uint8_t* buf, size_t len);
 static int get_sensor_ctx( const sensor_node_cfg_t *cfg, sensor_ctx_t *ctx);
-static int send_fragment( int fd, sensor_ctx_t *ctx, sensor_node_cfg_t *cfg);
-static int send_glue( int fd, sensor_ctx_t *ctx);
-static int send_normal( int fd, sensor_ctx_t *ctx, sensor_node_cfg_t *cfg);
-void send_corrupt_data(int fd, const sensor_node_cfg_t *cfg);
-uint8_t tcpbuf[RX_BUF_SIZE] = {0};
+static int send_fragment(
+    int fd,
+    uint8_t *buf,
+    size_t bufsize,
+    sensor_ctx_t *ctx,
+    uint32_t interval_ms);
+
+static int send_glue(
+    int fd,
+    uint8_t *buf,
+    size_t bufsize,
+    sensor_ctx_t *ctx);
+
+static int send_normal(
+    int fd,
+    uint8_t *buf,
+    size_t bufsize,
+    sensor_ctx_t *ctx,
+    uint32_t interval_ms);
+
+void send_corrupt_data(
+        int fd,
+        uint8_t *buf,
+        size_t bufsize,
+        sensor_ctx_t *ctx);
+static uint8_t tcpbuf[RX_BUF_SIZE * 2] = {0};
 sensor_id_t sensor_id = 0;
 
 static sensor_data_t temperature_sensor[] = {
@@ -136,6 +157,63 @@ double random_range(double min, double max)
 }
 int client_fd = 0;
 
+static int wait_sgp_reply(int fd)
+{
+    fd_set rfds;
+
+    FD_ZERO(&rfds);
+    FD_SET(fd, &rfds);
+
+    struct timeval tv;
+
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    int rc = select(fd + 1, &rfds, NULL, NULL, &tv);
+
+    if (rc <= 0)
+        return 0;
+
+    uint8_t rsp;
+
+    ssize_t n = recv(fd, &rsp, 1, 0);
+
+    if (n != 1)
+        return 0;
+
+    printf("Receive 0x%x\n", rsp);
+    if (rsp == SGP_ACK)
+        return 1;
+
+    return -1;
+}
+
+static int send_sgp_with_retry( int fd, const uint8_t *frame, size_t len)
+{
+    int retry;
+
+    for (retry = 0; retry < SGP_MAX_RETRY; retry++) {
+        ssize_t sent = send(fd, frame, len, 0);
+
+        if (sent != (ssize_t)len)
+            continue;
+
+        int reply = wait_sgp_reply(fd);
+
+        if (reply == 1)
+        {
+            return 0;
+        }
+
+        /*
+         * timeout or NAK
+         * resend
+         */
+    }
+
+    return -1;
+}
+
 int main(int argc, char **argv)
 {
     sensor_node_cfg_t cfg;
@@ -167,25 +245,25 @@ int main(int argc, char **argv)
 
     if(cfg.glue) {
         printf("Send glue\n");
-        send_glue(client_fd, &ctx);
+        if(send_glue(client_fd, tcpbuf, sizeof(tcpbuf), &ctx) != 0) {
+            fprintf(stderr, "Error: Fail send_glue");
+        }
     }
     else if(cfg.fragment) {
         printf("Send fraqment\n");
-        send_fragment(client_fd, &ctx, &cfg);
+        if(send_fragment(client_fd, tcpbuf, sizeof(tcpbuf), &ctx, cfg.interval_ms) != 0) {
+            fprintf(stderr, "Error: Fail send_fragment");
+        }
     }
     else if (cfg.corrupt) {
-        send_corrupt_data(client_fd, &cfg);
+        send_corrupt_data(client_fd, tcpbuf, sizeof(tcpbuf), &ctx);
     }
     else {
         printf("Send normal\n");
-        send_normal(client_fd, &ctx, &cfg);
+        if(send_normal(client_fd, tcpbuf, sizeof(tcpbuf), &ctx, cfg.interval_ms) != 0){
+            fprintf(stderr, "Error: Fail send_normal");
+        }
     }
-
-    // for(int i = 0; i < len; i++) {
-    //     printf("0x%x ", tcpbuf[i]);
-    //
-    // }
-    // printf("\n");
 
     int err = sennode_tcp_close(client_fd);
     if(err == -1) {
@@ -320,10 +398,11 @@ void sleep_ms(int milliseconds)
 
 static int send_normal(
     int fd,
+    uint8_t *buf,
+    size_t bufsize,
     sensor_ctx_t *ctx,
-    sensor_node_cfg_t *cfg)
+    uint32_t interval_ms)
 {
-    uint8_t frame[128];
 
     for(size_t i = 0; i < ctx->count; i++)
     {
@@ -331,18 +410,24 @@ static int send_normal(
 
         ssize_t len =
             ctx->encode(
-                frame,
-                sizeof(frame),
+                buf,
+                bufsize,
                 &ctx->data[i]);
 
         if(len < 0)
             return -1;
 
-        send(fd, frame, len, 0);
+        if(SENSOR_SMOKE_GAS == ctx->type) {
+            if(send_sgp_with_retry(fd, buf, len) == -1 ) {
+                fprintf(stderr, "SGP transmit failed after 3 retries\n");
+            }
+        }
+        else
+            send(fd, buf, len, 0);
 
         if(ctx->periodic)
         {
-            sleep_ms(cfg->interval_ms);
+            sleep_ms(interval_ms);
         }
         else {
             uint16_t sleep_random = (rand() % 10);
@@ -351,15 +436,16 @@ static int send_normal(
             sleep_ms(sleep_random * 1000);
         }
     }
+    memset(buf, 0, bufsize);
 
     return 0;
 }
 static int send_glue(
     int fd,
+    uint8_t *buf,
+    size_t bufsize,
     sensor_ctx_t *ctx)
 {
-    uint8_t tcpbuf[RX_BUF_SIZE * 2];
-
     size_t total_len = 0;
 
     for(size_t i = 0; i < ctx->count; i++)
@@ -368,8 +454,8 @@ static int send_glue(
 
         ssize_t len =
             ctx->encode(
-                tcpbuf + total_len,
-                sizeof(tcpbuf) - total_len,
+                buf + total_len,
+                bufsize - total_len,
                 &ctx->data[i]);
 
         if(len < 0)
@@ -378,16 +464,26 @@ static int send_glue(
         total_len += len;
     }
 
-    send(fd, tcpbuf, total_len, 0);
-
+    for(unsigned long i = 0; i < total_len; i++) {
+        printf("0x%x ", buf[i]);
+    }
+    printf("\n");
+    if(SENSOR_SMOKE_GAS == ctx->type) {
+        if(send_sgp_with_retry(fd, buf, total_len) == -1 ) {
+            fprintf(stderr, "SGP transmit failed after 3 retries\n");
+        }
+    }
+    else 
+        send(fd, buf, total_len, 0);
     return 0;
 }
 static int send_fragment(
     int fd,
+    uint8_t *buf,
+    size_t bufsize,
     sensor_ctx_t *ctx,
-    sensor_node_cfg_t *cfg)
+    uint32_t interval_ms)
 {
-    uint8_t frame[128];
 
     for(size_t i = 0; i < ctx->count; i++)
     {
@@ -395,8 +491,8 @@ static int send_fragment(
 
         ssize_t len =
             ctx->encode(
-                frame,
-                sizeof(frame),
+                buf,
+                bufsize,
                 &ctx->data[i]);
 
         if(len < 0)
@@ -413,18 +509,21 @@ static int send_fragment(
                 chunk = len - offset;
             }
 
-            send(
-                fd,
-                frame + offset,
-                chunk,
-                0);
+            if(SENSOR_SMOKE_GAS == ctx->type) {
+                if(send_sgp_with_retry(fd, buf + offset, chunk) == -1 ) {
+                    fprintf(stderr, "SGP transmit failed after 3 retries\n");
+                }
+            }
+            else
+                send( fd, buf + offset, chunk, 0);
 
             offset += chunk;
 
-            sleep_ms(cfg->interval_ms);
+            sleep_ms(interval_ms);
         }
     }
 
+    memset(buf, 0, bufsize);
     return 0;
 }
 
@@ -500,50 +599,60 @@ static int get_sensor_ctx(
 }
 
 
-void send_corrupt_data(int fd, const sensor_node_cfg_t *cfg)
+void send_corrupt_data(
+        int fd,
+        uint8_t *buf,
+        size_t bufsize,
+        sensor_ctx_t *ctx)
 {
     ssize_t len;
-    if (strcmp(cfg->sensor_type, "humidity") == 0) {
-        len = encode_humidity(tcpbuf, sizeof(tcpbuf), &humidity_sensor[0]);
-        memcpy(tcpbuf, "abc", sizeof("abc")); // corrupt HUM character
-        send(fd, tcpbuf, len, 0);
+    if (SENSOR_HUMIDITY == ctx->type) {
+        len = encode_humidity(buf, bufsize, &humidity_sensor[0]);
+        memcpy(buf, "abc", sizeof("abc")); // corrupt HUM character
+        send(fd, buf, len, 0);
         sleep_ms(1000);
-        len = encode_humidity(tcpbuf, sizeof(tcpbuf), &humidity_sensor[1]);
-        tcpbuf[len - 1] = 'Z'; // Remove \n
+        len = encode_humidity(buf, bufsize, &humidity_sensor[1]);
+        buf[len - 1] = 'Z'; // Remove \n
         const char *dummy_text = "This is dummy text that make humidity protocol is oversize of 64 bytes data";
         size_t dummy_text_len = strlen(dummy_text);
-        memcpy(tcpbuf + len, dummy_text, dummy_text_len); // Oversize HLP
-        send(fd, tcpbuf, len + dummy_text_len, 0);
+        memcpy(buf + len, dummy_text, dummy_text_len); // Oversize HLP
+        send(fd, buf, len + dummy_text_len, 0);
         sleep_ms(1000);
     }
-    else if (strcmp(cfg->sensor_type,"motion") == 0) {
-        len = encode_motion(tcpbuf, sizeof(tcpbuf), &motion_sensor[0]);
-        tcpbuf[0] = 0x03; // Malform first frame
-        send(fd, tcpbuf, len, 0);
+    else if (SENSOR_MOTION == ctx->type) {
+        len = encode_motion(buf, bufsize, &motion_sensor[0]);
+        buf[0] = 0x03; // Malform first frame
+        send(fd, buf, len, 0);
         sleep_ms(1000);
-        len = encode_motion(tcpbuf, sizeof(tcpbuf), &motion_sensor[1]);
-        tcpbuf[1] = 0x05; // Bad length 
-        send(fd, tcpbuf, len, 0);
-        sleep_ms(1000);
-    }
-    else if (strcmp(cfg->sensor_type, "door") == 0) {
-        len = encode_door(tcpbuf, sizeof(tcpbuf), &door_sensor[0]);
-        tcpbuf[0] = 0x03; // Malform first frame
-        send(fd, tcpbuf, len, 0);
-        sleep_ms(1000);
-        len = encode_door(tcpbuf, sizeof(tcpbuf), &door_sensor[1]);
-        tcpbuf[1] = 0x05; // Bad length 
-        send(fd, tcpbuf, len, 0);
+        len = encode_motion(buf, bufsize, &motion_sensor[1]);
+        buf[1] = 0x05; // Bad length 
+        send(fd, buf, len, 0);
         sleep_ms(1000);
     }
-    else if (strcmp(cfg->sensor_type,"smoke_gas") == 0) {
-        len = encode_smoke(tcpbuf, sizeof(tcpbuf), &smoke_sensor[0]);
-        tcpbuf[0] = 0x12; // Bad magic
-        send(fd, tcpbuf, len, 0);
+    else if (SENSOR_DOOR == ctx->type) {
+        len = encode_door(buf, bufsize, &door_sensor[0]);
+        buf[0] = 0x03; // Malform first frame
+        send(fd, buf, len, 0);
         sleep_ms(1000);
-        len = encode_smoke(tcpbuf, sizeof(tcpbuf), &smoke_sensor[1]);
-        tcpbuf[len - 1] = 0x00; // Bad CRC
-        send(fd, tcpbuf, len, 0);
+        len = encode_door(buf, bufsize, &door_sensor[1]);
+        buf[1] = 0x05; // Bad length 
+        send(fd, buf, len, 0);
+        sleep_ms(1000);
+    }
+    else if (SENSOR_SMOKE_GAS == ctx->type) {
+        len = encode_smoke(buf, bufsize, &smoke_sensor[0]);
+        buf[0] = 0x12; // Bad magic
+        if (send_sgp_with_retry(fd, buf, len) != 0) {
+            fprintf(stderr, "SGP transmit failed after 3 retries\n");
+        }
+        send(fd, buf, len, 0);
+        sleep_ms(1000);
+        len = encode_smoke(buf, bufsize, &smoke_sensor[1]);
+        buf[len - 1] = 0x00; // Bad CRC
+        if (send_sgp_with_retry(fd, buf, len) != 0) {
+            fprintf(stderr, "SGP transmit failed after 3 retries\n");
+        }
+        send(fd, buf, len, 0);
         sleep_ms(1000);
     }
 
