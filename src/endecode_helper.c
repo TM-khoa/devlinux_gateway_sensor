@@ -343,16 +343,6 @@ static uint16_t crc16_ccitt_false(const uint8_t *data, size_t length) {
     return crc;
 }
 
-ssize_t sgp_reply(parse_result_t result, uint8_t *reply, size_t cap)
-{
-    (void) result;
-    (void) reply;
-    (void) cap;
-    return 0;
-
-}
-
-
 static void write_le16(uint8_t *buf, uint16_t value)
 {
     buf[0] = (uint8_t)(value & 0xFF);
