@@ -464,10 +464,6 @@ static int send_glue(
         total_len += len;
     }
 
-    for(unsigned long i = 0; i < total_len; i++) {
-        printf("0x%x ", buf[i]);
-    }
-    printf("\n");
     if(SENSOR_SMOKE_GAS == ctx->type) {
         if(send_sgp_with_retry(fd, buf, total_len) == -1 ) {
             fprintf(stderr, "SGP transmit failed after 3 retries\n");
@@ -590,7 +586,6 @@ static int get_sensor_ctx(
             for(unsigned long i = 0; i < ctx->count; i++) {
                 ctx->data[i].id = cfg->sensor_id;
             }
-            ctx->data[2].id = 1000; // Mix an unavailable ID
             return 0;
         }
     }
