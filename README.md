@@ -41,7 +41,6 @@ Current status:
 - Reads `room_sensor.txt`
 - Authenticates sensor IDs
 - Checks sensor type and valid value ranges
-- Rejects invalid or malformed sensor readings before storing them
 
 ### 3. Storage Manager (stormgr)
 - Connects to the SQLite database (`gateway.db`)
@@ -115,12 +114,24 @@ Build the default version:
 make
 ```
 
-Build with debug logging enabled:
+Build with debug logging enabled options:
 
-```bash
-make clean
+- `DEBUG`: macro definition to enable debug log features
+- `LOG_MAIN`: macro definition to enable debug log in file `gateway.c`
+- `LOG_CONNMGR`: macro definition to enable debug log in file `connection_manager.c`
+- `LOG_DATAMGR`: macro definition to enable debug log in file `data_manager.c`
+- `LOG_STORMGR`: macro definition to enable debug log in file `storage_manager.c`
+- `LOG_SBUF`: macro definition to enable debug log in file `share_buffer.c`
+
+__*Note*__: Must call `make clean` first
+
+Show full log debug in all source file:
+
+```make
 make EXTRA_CFLAGS="-DDEBUG -DLOG_MAIN -DLOG_CONNMGR -DLOG_DATAMGR -DLOG_STORMGR -DLOG_SBUF"
 ```
+
+Or modify `log_option.mk` file
 
 The build output will generate binaries under `bin/` and libraries under `lib/`.
 
@@ -185,7 +196,7 @@ Optional client behaviors:
 4. Observe the logs and database entries.
 
 ## Testing
-
+__*Note*__: The test is performed localhost port
 Common test targets in the Makefile:
 
 ```bash
