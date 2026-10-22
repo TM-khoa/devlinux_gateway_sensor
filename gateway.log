@@ -1,0 +1,258 @@
+40 2026-10-22 09:46:04 CONN A sensor node with 40 has opened a new connection
+41 2026-10-22 09:46:04 CONN A sensor node with 40 has opened a new connection
+42 2026-10-22 09:46:04 CONN A sensor node with 40 has closed the connection
+43 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is open
+44 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is open
+45 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is closed
+46 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is open
+47 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is closed
+48 2026-10-22 09:46:04 CONN A sensor node with 40 has opened a new connection
+49 2026-10-22 09:46:04 DATA The sensor node with 40 reports the door is open
+50 2026-10-22 09:46:05 DATA The sensor node with 40 reports the door is closed
+51 2026-10-22 09:46:05 DATA The sensor node with 40 reports the door is open
+52 2026-10-22 09:46:06 DATA The sensor node with 40 reports the door is closed
+53 2026-10-22 09:46:06 CONN A sensor node with 40 has closed the connection
+54 2026-10-22 09:46:09 DATA The sensor node with 40 reports the door is closed
+55 2026-10-22 09:46:16 DATA The sensor node with 40 reports the door is open
+56 2026-10-22 09:46:26 DATA The sensor node with 40 reports the door is closed
+57 2026-10-22 09:46:33 CONN A sensor node with 40 has closed the connection
+58 2026-10-22 09:46:43 CONN A sensor node with 30 has opened a new connection
+59 2026-10-22 09:46:43 CONN A sensor node with 30 has closed the connection
+60 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+61 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+62 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+63 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+64 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+65 2026-10-22 09:46:43 CONN A sensor node with 30 has opened a new connection
+66 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+67 2026-10-22 09:46:43 CONN A sensor node with 30 has opened a new connection
+68 2026-10-22 09:46:43 DATA The sensor node with 30 detected motion
+69 2026-10-22 09:46:44 DATA The sensor node with 30 detected motion
+70 2026-10-22 09:46:45 DATA The sensor node with 30 detected motion
+71 2026-10-22 09:46:46 DATA The sensor node with 30 detected motion
+72 2026-10-22 09:46:47 DATA The sensor node with 30 detected motion
+73 2026-10-22 09:46:48 CONN A sensor node with 30 has closed the connection
+74 2026-10-22 09:46:51 DATA The sensor node with 30 detected motion
+75 2026-10-22 09:46:54 DATA The sensor node with 30 detected motion
+76 2026-10-22 09:46:56 DATA The sensor node with 30 detected motion
+77 2026-10-22 09:46:57 DATA The sensor node with 30 detected motion
+78 2026-10-22 09:46:58 CONN A sensor node with 30 has closed the connection
+79 2026-10-22 09:47:11 CONN A sensor node with 50 has opened a new connection
+80 2026-10-22 09:47:11 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+81 2026-10-22 09:47:11 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+82 2026-10-22 09:47:11 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+83 2026-10-22 09:47:11 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+84 2026-10-22 09:47:11 CONN A sensor node with 50 has closed the connection
+85 2026-10-22 09:47:11 CONN A sensor node with 50 has opened a new connection
+86 2026-10-22 09:47:12 CONN A sensor node with 50 has opened a new connection
+87 2026-10-22 09:47:13 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+88 2026-10-22 09:47:15 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+89 2026-10-22 09:47:15 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+90 2026-10-22 09:47:15 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+91 2026-10-22 09:47:17 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+92 2026-10-22 09:47:18 CONN A sensor node with 50 has closed the connection
+93 2026-10-22 09:47:31 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+94 2026-10-22 09:47:35 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+95 2026-10-22 09:47:49 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+96 2026-10-22 09:47:53 CONN A sensor node with 50 has closed the connection
+97 2026-10-22 09:48:46 Received malformed frame on SGP port (bad magic)
+98 2026-10-22 09:48:49 Received malformed frame on SGP port (bad CRC)
+99 2026-10-22 09:49:07 CONN A sensor node with 1000 has opened a new connection
+100 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1000
+101 2026-10-22 09:49:07 CONN A sensor node with 1001 has opened a new connection
+102 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+103 2026-10-22 09:49:07 CONN A sensor node with 1002 has opened a new connection
+104 2026-10-22 09:49:07 CONN A sensor node with 1002 has closed the connection
+105 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1002
+106 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1002
+107 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1002
+108 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1002
+109 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1002
+110 2026-10-22 09:49:07 CONN A sensor node with 1003 has opened a new connection
+111 2026-10-22 09:49:07 CONN A sensor node with 1003 has closed the connection
+112 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1003
+113 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1003
+114 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1003
+115 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1003
+116 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1003
+117 2026-10-22 09:49:07 CONN A sensor node with 1004 has opened a new connection
+118 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+119 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+120 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+121 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+122 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+123 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+124 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1004
+125 2026-10-22 09:49:07 CONN A sensor node with 1004 has closed the connection
+126 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+127 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1000
+128 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+129 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+130 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1000
+131 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+132 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+133 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1000
+134 2026-10-22 09:49:07 DATA Received sensor data with invalid type sensor node ID 1001
+135 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+136 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+137 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+138 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+139 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+140 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+141 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+142 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+143 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+144 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+145 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+146 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+147 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+148 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+149 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+150 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+151 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+152 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1001
+153 2026-10-22 09:49:08 CONN A sensor node with 1001 has closed the connection
+154 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+155 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+156 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+157 2026-10-22 09:49:08 DATA Received sensor data with invalid type sensor node ID 1000
+158 2026-10-22 09:49:09 DATA Received sensor data with invalid type sensor node ID 1000
+159 2026-10-22 09:49:09 DATA Received sensor data with invalid type sensor node ID 1000
+160 2026-10-22 09:49:09 DATA Received sensor data with invalid type sensor node ID 1000
+161 2026-10-22 09:49:09 DATA Received sensor data with invalid type sensor node ID 1000
+162 2026-10-22 09:49:09 DATA Received sensor data with invalid type sensor node ID 1000
+163 2026-10-22 09:49:09 CONN A sensor node with 1000 has closed the connection
+164 2026-10-22 09:50:37 CONN A sensor node with 11 has opened a new connection
+165 2026-10-22 09:50:37 CONN A sensor node with 11 has opened a new connection
+166 2026-10-22 09:50:37 CONN A sensor node with 11 has closed the connection
+167 2026-10-22 09:50:37 DATA The sensor node with 11 reports it's too cold (running avg temperature = -14.62)
+168 2026-10-22 09:50:37 DATA The sensor node with 11 reports it's too hot (running avg temperature = 54.38)
+169 2026-10-22 09:50:37 CONN A sensor node with 10 has opened a new connection
+170 2026-10-22 09:50:38 DATA The sensor node with 10 reports it's too cold (running avg temperature = -4.62)
+171 2026-10-22 09:50:39 DATA The sensor node with 10 reports it's too cold (running avg temperature = 14.50)
+172 2026-10-22 09:50:40 DATA The sensor node with 10 reports it's too hot (running avg temperature = 44.15)
+173 2026-10-22 09:50:40 DATA The sensor node with 11 reports it's too cold (running avg temperature = 0.68)
+174 2026-10-22 09:50:41 CONN A sensor node with 10 has closed the connection
+175 2026-10-22 09:50:50 DATA The sensor node with 11 reports it's too hot (running avg temperature = 54.41)
+176 2026-10-22 09:50:56 CONN A sensor node with 11 has closed the connection
+177 2026-10-22 09:51:36 CONN A sensor node with 22 has opened a new connection
+178 2026-10-22 09:51:36 CONN A sensor node with 22 has opened a new connection
+179 2026-10-22 09:51:36 CONN A sensor node with 22 has closed the connection
+180 2026-10-22 09:51:36 DATA The sensor node with 22 reports it's too dry (running avg humidity = 9.34)
+181 2026-10-22 09:51:36 DATA The sensor node with 22 reports it's too humid (running avg humidity = 85.74)
+182 2026-10-22 09:51:37 CONN A sensor node with 21 has opened a new connection
+183 2026-10-22 09:51:39 DATA The sensor node with 21 reports it's too dry (running avg humidity = 24.82)
+184 2026-10-22 09:51:39 DATA The sensor node with 22 reports it's too dry (running avg humidity = 25.80)
+185 2026-10-22 09:51:44 DATA The sensor node with 21 reports it's too dry (running avg humidity = 28.90)
+186 2026-10-22 09:51:49 DATA The sensor node with 22 reports it's too humid (running avg humidity = 83.32)
+187 2026-10-22 09:51:49 DATA The sensor node with 21 reports it's too humid (running avg humidity = 75.86)
+188 2026-10-22 09:51:55 CONN A sensor node with 22 has closed the connection
+189 2026-10-22 09:51:55 CONN A sensor node with 21 has closed the connection
+190 2026-10-22 09:54:49 CONN A sensor node with 11 has opened a new connection
+191 2026-10-22 09:54:49 CONN A sensor node with 11 has closed the connection
+192 2026-10-22 09:54:49 DATA The sensor node with 11 reports it's too cold (running avg temperature = 6.03)
+193 2026-10-22 09:54:49 DATA The sensor node with 11 reports it's too cold (running avg temperature = 7.85)
+194 2026-10-22 09:54:49 DATA The sensor node with 11 reports it's too hot (running avg temperature = 40.01)
+195 2026-10-22 09:54:49 CONN A sensor node with 40 has opened a new connection
+196 2026-10-22 09:54:49 CONN A sensor node with 40 has closed the connection
+197 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is open
+198 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is closed
+199 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is open
+200 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is closed
+201 2026-10-22 09:54:49 CONN A sensor node with 50 has opened a new connection
+202 2026-10-22 09:54:49 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+203 2026-10-22 09:54:49 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+204 2026-10-22 09:54:49 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+205 2026-10-22 09:54:49 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+206 2026-10-22 09:54:49 CONN A sensor node with 50 has closed the connection
+207 2026-10-22 09:54:49 CONN A sensor node with 11 has opened a new connection
+208 2026-10-22 09:54:49 CONN A sensor node with 22 has opened a new connection
+209 2026-10-22 09:54:49 CONN A sensor node with 30 has opened a new connection
+210 2026-10-22 09:54:49 CONN A sensor node with 30 has closed the connection
+211 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+212 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+213 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+214 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+215 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+216 2026-10-22 09:54:49 CONN A sensor node with 30 has opened a new connection
+217 2026-10-22 09:54:49 DATA The sensor node with 30 detected motion
+218 2026-10-22 09:54:49 CONN A sensor node with 40 has opened a new connection
+219 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is open
+220 2026-10-22 09:54:49 CONN A sensor node with 22 has opened a new connection
+221 2026-10-22 09:54:49 DATA The sensor node with 22 reports it's too dry (running avg humidity = 15.38)
+222 2026-10-22 09:54:49 CONN A sensor node with 22 has closed the connection
+223 2026-10-22 09:54:49 CONN A sensor node with 50 has opened a new connection
+224 2026-10-22 09:54:49 Received malformed frame on HLP port (malformed first frame)
+225 2026-10-22 09:54:49 Received malformed frame on EVP port (malformed first frame)
+226 2026-10-22 09:54:49 Received malformed frame on EVP port (malformed first frame)
+227 2026-10-22 09:54:49 Received malformed frame on SGP port (bad magic)
+228 2026-10-22 09:54:49 CONN A sensor node with 10 has opened a new connection
+229 2026-10-22 09:54:49 CONN A sensor node with 21 has opened a new connection
+230 2026-10-22 09:54:49 CONN A sensor node with 40 has opened a new connection
+231 2026-10-22 09:54:49 DATA The sensor node with 40 reports the door is open
+232 2026-10-22 09:54:50 CONN A sensor node with 30 has opened a new connection
+233 2026-10-22 09:54:50 DATA The sensor node with 30 detected motion
+234 2026-10-22 09:54:50 DATA The sensor node with 40 reports the door is closed
+235 2026-10-22 09:54:50 CONN A sensor node with 50 has opened a new connection
+236 2026-10-22 09:54:50 DATA The sensor node with 40 reports the door is open
+237 2026-10-22 09:54:50 DATA The sensor node with 30 detected motion
+238 2026-10-22 09:54:50 DATA The sensor node with 40 reports the door is closed
+239 2026-10-22 09:54:50 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+240 2026-10-22 09:54:50 Received malformed frame on HLP port (bad length)
+241 2026-10-22 09:54:50 Received malformed frame on EVP port (bad length)
+242 2026-10-22 09:54:50 Received malformed frame on EVP port (bad length)
+243 2026-10-22 09:54:50 DATA The sensor node with 10 reports it's too cold (running avg temperature = -1.98)
+244 2026-10-22 09:54:51 DATA The sensor node with 30 detected motion
+245 2026-10-22 09:54:51 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 693.00 ppm)
+246 2026-10-22 09:54:51 DATA The sensor node with 21 reports it's too dry (running avg humidity = 15.38)
+247 2026-10-22 09:54:51 DATA The sensor node with 22 reports it's too dry (running avg humidity = 28.34)
+248 2026-10-22 09:54:51 DATA The sensor node with 40 reports the door is closed
+249 2026-10-22 09:54:51 DATA The sensor node with 11 reports it's too cold (running avg temperature = -14.62)
+250 2026-10-22 09:54:51 CONN A sensor node with 40 has closed the connection
+251 2026-10-22 09:54:52 DATA The sensor node with 30 detected motion
+252 2026-10-22 09:54:52 Received malformed frame on SGP port (bad CRC)
+253 2026-10-22 09:54:53 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+254 2026-10-22 09:54:53 DATA The sensor node with 30 detected motion
+255 2026-10-22 09:54:53 CONN A sensor node with 10 has closed the connection
+256 2026-10-22 09:54:53 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+257 2026-10-22 09:54:54 DATA The sensor node with 30 detected motion
+258 2026-10-22 09:54:54 CONN A sensor node with 30 has closed the connection
+259 2026-10-22 09:54:54 CONN A sensor node with 21 has closed the connection
+260 2026-10-22 09:54:55 DATA The sensor node with 22 reports it's too humid (running avg humidity = 85.74)
+261 2026-10-22 09:54:55 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+262 2026-10-22 09:54:56 CONN A sensor node with 50 has closed the connection
+263 2026-10-22 09:54:56 DATA The sensor node with 11 reports it's too hot (running avg temperature = 54.38)
+264 2026-10-22 09:54:57 CONN A sensor node with 22 has closed the connection
+265 2026-10-22 09:54:59 CONN A sensor node with 11 has closed the connection
+266 2026-10-22 09:54:59 DATA The sensor node with 40 reports the door is open
+267 2026-10-22 09:54:59 DATA The sensor node with 30 detected motion
+268 2026-10-22 09:55:00 DATA The sensor node with 30 detected motion
+269 2026-10-22 09:55:00 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 400.00 ppm)
+270 2026-10-22 09:55:08 DATA The sensor node with 30 detected motion
+271 2026-10-22 09:55:08 DATA The sensor node with 40 reports the door is closed
+272 2026-10-22 09:55:08 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 539.00 ppm)
+273 2026-10-22 09:55:15 CONN A sensor node with 40 has closed the connection
+274 2026-10-22 09:55:15 CONN A sensor node with 30 has closed the connection
+275 2026-10-22 09:55:20 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+276 2026-10-22 09:55:22 CONN A sensor node with 50 has closed the connection
+277 2026-10-22 09:57:03 CONN terminated
+278 2026-10-22 09:57:03 DATA The sensor node with 50 reports a smoke/gas alarm (concentration = 10000.00 ppm)
+279 2026-10-22 09:57:03 DATA terminated
+280 2026-10-22 09:57:03 STOR terminated
+281 2026-10-22 09:57:03 MAIN Gateway is shutting down (receive signal handler)
+1 2026-10-22 10:00:27 MAIN Gateway started...
+2 2026-10-22 10:00:27 CONN Created
+3 2026-10-22 10:00:27 DATA Created
+4 2026-10-22 10:00:27 STOR Created
+5 2026-10-22 10:00:30 STOR Unable to connect to SQL server.
+1 2026-10-22 10:00:46 MAIN Gateway started...
+2 2026-10-22 10:00:46 CONN Created
+3 2026-10-22 10:00:46 DATA Created
+4 2026-10-22 10:00:46 STOR Created
+5 2026-10-22 10:00:47 STOR Connection to SQL server established.
+6 2026-10-22 10:00:47 STOR New table SensorData created.
+7 2026-10-22 10:00:55 CONN terminated
+8 2026-10-22 10:00:55 DATA Received sensor data with invalid type sensor node ID 0
+9 2026-10-22 10:00:55 DATA terminated
+10 2026-10-22 10:00:55 STOR terminated
+11 2026-10-22 10:00:55 MAIN Gateway is shutting down (receive signal handler)
