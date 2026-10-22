@@ -270,6 +270,7 @@ int main(int argc, char **argv)
         printf("Error: Fail to close socket\n");
         return -1;
     }
+    printf("Completed\n");
     return EXIT_SUCCESS;
 }
 
