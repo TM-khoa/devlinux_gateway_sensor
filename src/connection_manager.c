@@ -224,9 +224,9 @@ static void *thread_conn_worker(void *arg)
     if(conn->adapter->build_reply != NULL) {
         LDB("Allocate reply frame cache");
         p_cache = (frame_cache_t *)malloc(sizeof(frame_cache_t));
-    }
-    if(p_cache == NULL) {
-        fprintf(stderr, "Cannot allocate reply frame cache\n");
+        if(p_cache == NULL) {
+            fprintf(stderr, "Cannot allocate reply frame cache\n");
+        }
     }
 
     for (;;) {
