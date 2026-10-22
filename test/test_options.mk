@@ -14,6 +14,10 @@ mix_full:
 	$(BIN_PATH)/client door 40 127.0.0.1 1236 1000 &
 	$(BIN_PATH)/client humidity 22 127.0.0.1 1235 400  --glue &
 	$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 1000 &
+	$(BIN_PATH)/client humidity 22 127.0.0.1 1235 50 --corrupt &
+	$(BIN_PATH)/client motion 30 127.0.0.1 1236 500 --corrupt &
+	$(BIN_PATH)/client door 40 127.0.0.1 1236 200 --corrupt &
+	$(BIN_PATH)/client smoke_gas 50 127.0.0.1 1237 300 --corrupt &
 	wait
 
 corrupt:
