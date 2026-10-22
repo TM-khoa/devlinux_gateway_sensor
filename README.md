@@ -1,114 +1,158 @@
 # devlinux_gateway_sensor
-Mid-term project of Devlinux course
 
-# Prerequisites
+Mid-term project for the Devlinux course.
 
-- OS: Linux OS
-- GNU Make: `make`
+This project implements a multi-protocol sensor gateway running on Linux. It listens for sensor traffic over TCP/IP, validates incoming data, stores the results in an SQLite database, and logs important events. The gateway is designed to handle multiple sensor connections concurrently.
 
-# Architecture design
-![architecture_design](assets/architecture_design.jpg)
+## Overview
 
-# Description
+The gateway accepts sensor packets from different device types and converts them into a unified internal data format before storing them.
 
-A gateway program to handle incoming message from client sensor via TCP/IP with multiple message protocols. Record data in SQLLite3 database and monitor sensor data to HTTP website
+Supported sensor protocols:
+- TBP (Temperature Binary Protocol) on base port
+- HLP (Humidity Line Protocol) on base port + 1
+- EVP (Event TLV Protocol) on base port + 2
+- SGP (Smoke-Gas Protocol) on base port + 3
 
-Each client sensor with its own protocol connects to provided listening port
+Example:
+- Base port = 1234
+- HLP = 1235
+- EVP = 1236
+- SGP = 1237
 
-Sensor protocol supported: 
-- TBP(Temperature binary protocol)
-- HLP(Humidity Line Protocol)
-- SGP(Smoke-Gas protocol) 
-- EVP(Event TLV Protocol)
+Each incoming connection is processed by a dedicated thread. For SGP, the gateway must reply with ACK (0x06) or NAK (0x15). If the gateway rejects a packet, the client retries the message up to 3 times.
 
-User provide gateway's base port for TBP port via input positional argument
-HLP port will offset by 1
-EVP port will offset by 2
-SGP port will offset by 3
+After successful parsing, the data is pushed into a shared buffer for validation and storage.
 
-For example:
-````
-The base port is 1234
-HLP's port is 1235
-EVP's port is 1236
-SGP's port is 1237
-````
+Current status:
+- Implemented: TCP socket listener, protocol parsing, validation, SQLite storage, logging
+- Not implemented: web/HTTP monitoring process and shared status feature
 
-# Project structure
-```tree
-├── LICENSE
+## Main components
+
+### 1. Connection Manager (connmgr)
+- Opens listening ports for all sensor protocols
+- Accepts multiple TCP connections
+- Parses incoming packets
+- Handles protocol-specific ACK/NAK behavior for SGP
+- Sends valid parsed data to the shared buffer
+
+### 2. Data Manager (datamgr)
+- Reads `room_sensor.txt`
+- Authenticates sensor IDs
+- Checks sensor type and valid value ranges
+- Rejects invalid or malformed sensor readings before storing them
+
+### 3. Storage Manager (stormgr)
+- Connects to the SQLite database (`gateway.db`)
+- Inserts validated records into the database
+- Retries connection attempts up to 3 times when the database is unavailable
+
+### 4. Logger
+- Records key events such as gateway startup/shutdown
+- Captures invalid sensor frames, alarm conditions, and database failures
+- Helps monitor system behavior during testing and debugging
+
+## Project structure
+
+```text
+.
 ├── Makefile
 ├── README.md
-├── assets
-│   └── architecture_design.jpg
-├── include
-│   ├── common.h
-│   ├── connection_manager.h
-│   ├── data_manager.h
-│   ├── endecode_helper.h
-│   ├── logger.h
-│   ├── protocol_adapter.h
-│   ├── sensor_config.h
-│   ├── sensor_types.h
-│   ├── server.h
-│   └── storage_manager.h
-├── src
-│   ├── client.c
-│   ├── connection_manager.c
-│   ├── endecode_helper.c
-│   ├── gateway.c
-│   └── logger.c
+├── LICENSE
+├── assets/
+│   └── architecture_design.jpg
+├── include/
+│   ├── common.h
+│   ├── connection_manager.h
+│   ├── data_manager.h
+│   ├── endecode_helper.h
+│   ├── gateway.h
+│   ├── logger.h
+│   ├── protocol_adapter.h
+│   ├── sensor_config.h
+│   ├── sensor_types.h
+│   ├── share_buffer.h
+│   └── storage_manager.h
+├── src/
+│   ├── client.c
+│   ├── connection_manager.c
+│   ├── data_manager.c
+│   ├── endecode_helper.c
+│   ├── gateway.c
+│   ├── logger.c
+│   ├── share_buffer.c
+│   └── storage_manager.c
+├── test/
+│   └── test_options.mk
+├── room_sensor.txt
+├── gateway.db
+├── log_option.mk
+├── compile_commands.json
+└── lib/
+    └── built libraries
 ```
-# Build the project
-Default:
-```make
+
+## Prerequisites
+
+- Linux OS
+- GNU Make
+- SQLite3 development library
+- Valgrind (optional, for debugging and memory checking)
+
+Install dependencies on Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential sqlite3 libsqlite3-dev valgrind
+```
+
+## Build the project
+
+Build the default version:
+
+```bash
 make
 ```
-Output:
+
+Build with debug logging enabled:
+
 ```bash
-mkdir -p ./obj
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -c src/gateway.c -o obj/gateway.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -c src/connection_manager.c -o obj/connection_manager.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -c src/endecode_helper.c -o obj/endecode_helper.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -c src/logger.c -o obj/logger.o
-mkdir -p ./lib
-ar rcs lib/libconnection_manager.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-ar rcs lib/libendecode_helper.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-ar rcs lib/liblogger.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-mkdir -p ./bin
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread obj/gateway.o -L./lib  -lconnection_manager  -lendecode_helper  -llogger -o ./bin/gateway
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -c src/client.c -o obj/client.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread obj/client.o -L./lib  -lconnection_manager  -lendecode_helper  -llogger -o ./bin/client
+make clean
+make EXTRA_CFLAGS="-DDEBUG -DLOG_MAIN -DLOG_CONNMGR -DLOG_DATAMGR -DLOG_STORMGR -DLOG_SBUF"
 ```
 
-Build with `-DDEBUG` option:
-__*Note*__: Must call `make clean first`
-```make
-make EXTRA_CFLAGS="-DDEBUG"
-```
-Output:
-```plaintext
-mkdir -p ./obj
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -DDEBUG -c src/gateway.c -o obj/gateway.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -DDEBUG -c src/connection_manager.c -o obj/connection_manager.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -DDEBUG -c src/endecode_helper.c -o obj/endecode_helper.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -DDEBUG -c src/logger.c -o obj/logger.o
-mkdir -p ./lib
-ar rcs lib/libconnection_manager.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-ar rcs lib/libendecode_helper.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-ar rcs lib/liblogger.a obj/connection_manager.o obj/endecode_helper.o obj/logger.o
-mkdir -p ./bin
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread obj/gateway.o -L./lib  -lconnection_manager  -lendecode_helper  -llogger -o ./bin/gateway
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread -DDEBUG -c src/client.c -o obj/client.o
-gcc -Wall -Wextra -std=gnu99 -Iinclude -g -O0 -pthread obj/client.o -L./lib  -lconnection_manager  -lendecode_helper  -llogger -o ./bin/client
+The build output will generate binaries under `bin/` and libraries under `lib/`.
 
-```
-# Load the server program
-For example to listen on port 1234:
+## Run the gateway
+
 ```bash
-./bin/gateway 1234
+./bin/gateway <base-port> <http-port>
 ```
-# Load the client program
+
+Example:
+
+```bash
+./bin/gateway 1234 8080
+```
+
+The second argument is reserved for the HTTP/web process, but the web monitoring feature is not implemented in the current project version. The gateway still runs correctly using the base port and the derived protocol ports.
+
+## Run a sensor client
+
+```bash
+./bin/client <sensor-type> <sensor-id> <ip-address> <port> <interval-ms> [options]
+```
+
+Sensor types:
+- temperature
+- humidity
+- motion
+- door
+- smoke_gas
+
+Example:
+
 ```bash
 ./bin/client temperature 10 127.0.0.1 1234 1000
 ./bin/client humidity 21 127.0.0.1 1235 1000
@@ -116,126 +160,69 @@ For example to listen on port 1234:
 ./bin/client door 40 127.0.0.1 1236 1000
 ./bin/client smoke_gas 50 127.0.0.1 1237 1000
 ```
-# Output
-Gateway log without sensor client connection:
-```
-make gw 
-./bin/gateway 1234
-Gateway started...
-thread_connmgr created
-Listening on port:1234
-thread_datamgr created
-thread_storagemgr created
-Listening on port:1235
-Listening on port:1236
-Listening on port:1237
-Waiting new connection
-Child received: MAIN Gateway started...
-Child received: CONN Created
-^C
-Signal handler:SIGINT Exiting cleanly
-Child received: 
 
-Signal handler:SIGINT Exiting cleanly
-Child received: CONN terminated
-Gateway is shutting down
-Child received: DATA terminated
-Child received: STOR terminated
-Child: EOF, close fd now
+Optional client behaviors:
+- `fragment`: split a frame into multiple packets
+- `glue`: merge multiple frames before sending
+- `corrupt`: inject malformed data for fault testing
 
-```
-`gateway.log`:
-```
-1 2026-10-13 13:24:22 MAIN Gateway started...
-2 2026-10-13 13:24:22 CONN Created
-3 2026-10-13 13:24:22 DATA Created
-4 2026-10-13 13:24:22 STOR Created
-5 2026-10-13 13:24:24 CONN terminated
-6 2026-10-13 13:24:25 DATA terminated
-7 2026-10-13 13:24:25 STOR terminated
-8 2026-10-13 13:24:25 MAIN Gateway is shutting down
-```
-Gateway log with sensors connected:
-```
-./bin/gateway 1234
-Gateway started...
-thread_connmgr created
-thread_storagemgr created
-Listening on port:1234
-thread_datamgr created
-Listening on port:1235
-Listening on port:1236
-Listening on port:1237
-Waiting new connection
-Child received: MAIN Gateway started...
-Child received: STOR Created
-Client connected from IP: 127.0.0.1, Port: 1234
-New connection arrived
-n_conns:0
-Sensor ID:10
-Sensor type:SENSOR_TEMPERATURE
-Sensor value:-11.88
-Timestamp:1791873050
-Child received: A sensor node with 10 has opened a new connection
-Client connected from IP: 127.0.0.1, Port: 1235
-New connection arrived
-n_conns:1
-Sensor ID:21
-Sensor type:SENSOR_HUMIDITY
-Sensor value:95.90
-Timestamp:1791873050
-Child received: A sensor node with 21 has opened a new connection
-Client connected from IP: 127.0.0.1, Port: 1236
-New connection arrived
-n_conns:2
-Sensor ID:30
-Sensor type:SENSOR_MOTION
-Sensor value:1.00
-Timestamp:1791873050
-Child received: A sensor node with 30 has opened a new connection
-Client connected from IP: 127.0.0.1, Port: 1236
-New connection arrived
-n_conns:3
-Sensor ID:40
-Sensor type:SENSOR_DOOR
-Sensor value:1.00
-Timestamp:1791873050
-Child received: A sensor node with 40 has opened a new connection
-Client connected from IP: 127.0.0.1, Port: 1237
-New connection arrived
-n_conns:4
-Sensor ID:50
-Sensor type:SENSOR_SMOKE_GAS
-Sensor value:100.00
-Timestamp:1791873050
-Child received: A sensor node with 50 has opened a new connection
-^C
-Signal handler:SIGINT Exiting cleanly
+## Example workflow
 
-Signal handler:SIGINT Exiting cleanly
-Child received: 
-Release resource client connection
-Release resource listen port
-Child received: CONN terminated
-Child received: STOR terminated
-Gateway is shutting down
-Child received: DATA terminated
-Child received: MAIN Gateway is shutting down
-Child: EOF, close fd now
+1. Build the project:
+   ```bash
+   make
+   ```
+2. Start the gateway:
+   ```bash
+   ./bin/gateway 1234 8080
+   ```
+3. Start several client sensors:
+   ```bash
+   ./bin/client temperature 10 127.0.0.1 1234 1000
+   ./bin/client humidity 21 127.0.0.1 1235 1000
+   ./bin/client smoke_gas 50 127.0.0.1 1237 1000
+   ```
+4. Observe the logs and database entries.
+
+## Testing
+
+Common test targets in the Makefile:
+
+```bash
+make gw
+make gw_fail
+make tbp
+make hlp
+make door
+make motion
+make sgp
+make sgp_nak
+make corrupt
+make sql_fail
+make sql_resume
+make id_fail
 ```
-`gateway.log`:
+
+These targets help validate the gateway under normal operating conditions, invalid inputs, corrupted packets, sensor ID failures, and database failure/retry cases.
+
+## Debugging and validation
+
+Memory leak check:
+
+```bash
+valgrind --leak-check=full --track-origins=yes ./bin/gateway 1234 8080
 ```
-1 2026-10-13 13:30:42 MAIN Gateway started...
-2 2026-10-13 13:30:42 STOR Created
-3 2026-10-13 13:30:42 CONN Created
-4 2026-10-13 13:30:42 DATA Created
-5 2026-10-13 13:30:50 A sensor node with 10 has opened a new connection
-6 2026-10-13 13:30:50 A sensor node with 21 has opened a new connection
-7 2026-10-13 13:30:50 A sensor node with 30 has opened a new connection
-8 2026-10-13 13:30:50 A sensor node with 40 has opened a new connection
-9 2026-10-13 13:30:50 A sensor node with 50 has opened a new connection
-10 2026-10-13 13:30:55 CONN terminated
-11 2026-10-13 13:30:55 STOR terminated
-12 2026-10-13 13:30:56 DATA terminated
-13 2026-10-13 13:30:56 MAIN Gateway is shutting down
+
+Thread/race condition check:
+
+```bash
+valgrind --tool=helgrind ./bin/gateway 1234 8080
 ```
+
+## Notes
+
+- This project is intended as a learning project and a gateway prototype.
+- It focuses on networking, protocol parsing, validation, and SQLite persistence.
+- The HTTP monitoring/dashboard is planned but not implemented yet.
+- `room_sensor.txt` is used to define valid sensor IDs and ranges.
+
