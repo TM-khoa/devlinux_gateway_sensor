@@ -30,6 +30,8 @@ gw_fail:
 	$(BIN_PATH)/gateway 8080 &
 	$(BIN_PATH)/gateway 1234 &
 	$(BIN_PATH)/gateway 12 124 421 &
+	$(BIN_PATH)/gateway abc 8080 &
+	$(BIN_PATH)/gateway -a1234 808a0 &
 
 tbp:
 	$(BIN_PATH)/client temperature 11 127.0.0.1 1234 1000  &
