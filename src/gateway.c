@@ -207,14 +207,53 @@ int server_bringup(int fd) {
 
 }
 
+
+int check_net_port(char *str, uint16_t *port)
+{
+    char *endptr;
+    // Reset errno before the call
+    errno = 0;
+    // Perform conversion
+    long val = strtol(str, &endptr, 10);
+
+    // Check for overflow or underflow errors
+    if ((errno == ERANGE && (val == 0xFFFF || val == 0x00)) || (errno != 0 && val == 0)) {
+        perror("Conversion error");
+        return -1;
+    }
+
+    if (str == endptr) {
+        printf("Error: No digits found in the string.\n");
+        return -1;
+    }
+
+    // Check if there are trailing invalid characters left over
+    if (*endptr != '\0') {
+        printf("Partial conversion: Found number %ld, but hit invalid characters: '%s'\n", val, endptr);
+    } else {
+        printf("Success: Entire string converted cleanly to %ld\n", val);
+    }
+
+    *port = val;
+    return 0;
+
+}
+
 int main(int argc, char **argv) {
 
     if(argc != 3) {
-        fprintf(stderr, "\nError: Must provide exactly two arguments for sensor base port and http port");
-        exit(1);
+        fprintf(stderr, "\nError: Must provide exactly two arguments for sensor base port and http port\n");
+        exit(EXIT_FAILURE);
     }
-    gw.base_port = atoi(argv[1]);
-    gw.http_port = atoi(argv[2]);
+    if(check_net_port(argv[1], &gw.base_port) == -1) {
+        fprintf(stderr, "\nError: Invalid string argument for base port\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(check_net_port(argv[2], &gw.http_port) == -1) {
+        fprintf(stderr, "\nError: Invalid string argument for HTTP port\n");
+        exit(EXIT_FAILURE);
+    }
     /* Must create signal hanlder before forking 
      * to make child process inherit signal handler */
     if(create_signal_handler() != 0) {
