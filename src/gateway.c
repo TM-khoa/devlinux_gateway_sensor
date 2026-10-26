@@ -211,12 +211,12 @@ int server_bringup(int fd) {
 int check_net_port(char *str, uint16_t *port)
 {
     char *endptr;
-    // Reset errno before the call
+    /* Reset errno before the call */
     errno = 0;
-    // Perform conversion
+    /* Perform conversion */
     long val = strtol(str, &endptr, 10);
 
-    // Check for overflow or underflow errors
+    /* Check for overflow or underflow errors */
     if ((errno == ERANGE && (val == 0xFFFF || val == 0x00)) || (errno != 0 && val == 0)) {
         perror("Conversion error");
         return -1;
@@ -227,7 +227,7 @@ int check_net_port(char *str, uint16_t *port)
         return -1;
     }
 
-    // Check if there are trailing invalid characters left over
+    /* Check if there are trailing invalid characters left over */
     if (*endptr != '\0') {
         printf("Partial conversion: Found number %ld, but hit invalid characters: '%s'\n", val, endptr);
     } else {
@@ -239,7 +239,33 @@ int check_net_port(char *str, uint16_t *port)
 
 }
 
-int main(int argc, char **argv) {
+int check_terminate_log_process(pid_t pid)
+{
+    int status;
+    pid_t child_pid = waitpid(pid, &status, 0);
+    if (child_pid <= 0) {
+        perror("waitpid failed");
+        return -1;
+    }
+    else {
+        if(WIFEXITED(status) == 0) {
+            fprintf(stderr, "Error: Log process %d exit abnormally\n", pid);
+            return -1;
+        }
+        else {
+            int exit_code = WEXITSTATUS(status);
+            if(exit_code != 0) {
+                fprintf(stderr, "Error: Log process %d non-zero exit code:%d\n", pid, exit_code);
+                return -1;
+            }
+        }
+    }
+    LDB("Log process exit normally");
+    return 0;
+}
+
+int main(int argc, char **argv) 
+{
 
     if(argc != 3) {
         fprintf(stderr, "\nError: Must provide exactly two arguments for sensor base port and http port\n");
@@ -260,10 +286,18 @@ int main(int argc, char **argv) {
         perror("Failed to create signal handler");
         exit(1);
     }
-    mkfifo(FIFO_PATH, 0666); // Create named pipe
+    /* Create named pipe */
+    if(mkfifo(FIFO_PATH, 0666) == -1){
+        perror("mkfifo");
+        exit(EXIT_FAILURE);
+    } 
     pid_t pid = fork();
-
-    if (pid == 0) {
+    
+    if(pid < 0) {
+        perror("fork fail");
+        exit(EXIT_FAILURE);
+    }
+    else if (pid == 0) {
         /* Child: Read from FIFO */
         int fd = open(FIFO_PATH, O_RDONLY);
         char buf[512] = {0};
@@ -284,6 +318,7 @@ int main(int argc, char **argv) {
             memset(buf, 0, sizeof(buf));
         }
         close(fd);
+        exit(0);
     } else {
         /* Parent: Write to FIFO */
         int fd = open(FIFO_PATH, O_WRONLY);
@@ -300,6 +335,6 @@ int main(int argc, char **argv) {
         close(fd);
         unlink(FIFO_PATH); // Remove FIFO file when done
     }
-    return 0;
+    return check_terminate_log_process(pid);
 }
 
